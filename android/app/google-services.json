@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1085028424107",
+    "project_id": "starsync-8bf37",
+    "storage_bucket": "starsync-8bf37.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1085028424107:android:fada18b4f2810fe265daee",
+        "android_client_info": {
+          "package_name": "com.akshaykotish.starsync.starsyncapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCFkKU82B_GyQGtCKBjEmNvbgibLDy0Xso"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
