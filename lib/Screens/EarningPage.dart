@@ -34,9 +34,9 @@ class _EarningsPageState extends State<EarningsPage> {
   // Fetch withdrawable income from Firestore
   Future<void> _fetchWithdrawableAmount() async {
     await _loadAstrologerId();
-    print("SMFKM" + astrologerId.toString());
     if (astrologerId != null) {
-      DocumentSnapshot astrologerDoc = await _firestore.collection('astrologers').doc(astrologerId).get();
+      DocumentSnapshot astrologerDoc =
+      await _firestore.collection('astrologers').doc(astrologerId).get();
       setState(() {
         withdrawableAmount = astrologerDoc.exists
             ? astrologerDoc['withdrawable_amount'] ?? 0
@@ -47,7 +47,10 @@ class _EarningsPageState extends State<EarningsPage> {
 
   // Request withdrawal, store bank information
   Future<void> _requestWithdrawal() async {
-    if (astrologerId != null && bankAccount != null && bankName != null && ifscCode != null) {
+    if (astrologerId != null &&
+        bankAccount != null &&
+        bankName != null &&
+        ifscCode != null) {
       try {
         // Update astrologer document with bank information
         await _firestore.collection('astrologers').doc(astrologerId).update({
@@ -72,34 +75,60 @@ class _EarningsPageState extends State<EarningsPage> {
     showDialog(
       context: context,
       builder: (BuildContext context) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(15.0),
-          ),
-          title: Text("Enter Bank Information", style: Theme.of(context).textTheme.titleLarge),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _buildTextField("Bank Account", (value) => bankAccount = value),
-              _buildTextField("Bank Name", (value) => bankName = value),
-              _buildTextField("IFSC Code", (value) => ifscCode = value),
-            ],
-          ),
-          actions: [
-            TextButton(
-              child: Text("Cancel", style: TextStyle(color: Colors.red)),
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
+        return Dialog(
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          child: Container(
+            padding: EdgeInsets.all(20),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "Enter Bank Information",
+                    style: TextStyle(
+                      color: Colors.amber[800],
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  SizedBox(height: 20),
+                  _buildTextField("Bank Account", (value) => bankAccount = value),
+                  SizedBox(height: 10),
+                  _buildTextField("Bank Name", (value) => bankName = value),
+                  SizedBox(height: 10),
+                  _buildTextField("IFSC Code", (value) => ifscCode = value),
+                  SizedBox(height: 30),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton(
+                        child: Text(
+                          "Cancel",
+                          style: TextStyle(color: Colors.grey[600]),
+                        ),
+                        onPressed: () {
+                          Navigator.of(context).pop();
+                        },
+                      ),
+                      SizedBox(width: 10),
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.amber[800],
+                        ),
+                        child: Text("Submit"),
+                        onPressed: () {
+                          Navigator.of(context).pop();
+                          _requestWithdrawal();
+                        },
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
-            ElevatedButton(
-              child: Text("Submit"),
-              onPressed: () {
-                Navigator.of(context).pop();
-                _requestWithdrawal();
-              },
-            ),
-          ],
+          ),
         );
       },
     );
@@ -107,7 +136,16 @@ class _EarningsPageState extends State<EarningsPage> {
 
   Widget _buildTextField(String label, Function(String) onChanged) {
     return TextField(
-      decoration: InputDecoration(labelText: label),
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: TextStyle(color: Colors.grey[800]),
+        enabledBorder: UnderlineInputBorder(
+          borderSide: BorderSide(color: Colors.amber[800]!),
+        ),
+        focusedBorder: UnderlineInputBorder(
+          borderSide: BorderSide(color: Colors.amber[800]!),
+        ),
+      ),
       onChanged: onChanged,
     );
   }
@@ -115,18 +153,19 @@ class _EarningsPageState extends State<EarningsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white, // Light background
       appBar: AppBar(
-        title: Text("Earnings", style: Theme.of(context).textTheme.titleLarge),
-        backgroundColor: Theme.of(context).primaryColor,
+        title: Text("Earnings", style: TextStyle(color: Colors.black)),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        iconTheme: IconThemeData(color: Colors.black), // Back button color
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
             _buildWithdrawableCard(context), // Withdrawable amount card
-            SizedBox(height: 20),
-            _buildRequestWithdrawalButton(), // Request withdrawal button
-            SizedBox(height: 20),
+            SizedBox(height: 30),
             Expanded(child: _buildSolvedChatsList()), // Solved chats transactions
           ],
         ),
@@ -134,53 +173,56 @@ class _EarningsPageState extends State<EarningsPage> {
     );
   }
 
-  // Card showing the astrologer's withdrawable amount
+  // Card showing the astrologer's withdrawable amount with icon button
   Widget _buildWithdrawableCard(BuildContext context) {
-    return Card(
-      elevation: 10,
-      shadowColor: Colors.amber[800],
-      shape: RoundedRectangleBorder(
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Colors.amber[600]!, Colors.amber[800]!],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
         borderRadius: BorderRadius.circular(20),
       ),
-      child: Container(
-        padding: const EdgeInsets.all(20.0),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Colors.amber[400]!, Colors.amber[800]!],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
+      padding: const EdgeInsets.all(30.0),
+      child: Row(
+        children: [
+          Icon(
+            Icons.account_balance_wallet,
+            size: 50,
+            color: Colors.white,
           ),
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              "Withdrawable Income",
-              style: Theme.of(context).textTheme.titleLarge!.copyWith(color: Colors.white),
+          SizedBox(width: 20),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  "Withdrawable Income",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                SizedBox(height: 10),
+                Text(
+                  "\$$withdrawableAmount",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 36,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
             ),
-            SizedBox(height: 10),
-            Text(
-              "\$$withdrawableAmount",
-              style: Theme.of(context).textTheme.headlineMedium!.copyWith(color: Colors.white),
-            ),
-          ],
-        ),
+          ),
+          IconButton(
+            icon: Icon(Icons.arrow_forward_ios, color: Colors.white),
+            onPressed: _showBankInfoDialog,
+          ),
+        ],
       ),
-    );
-  }
-
-  // Button to request withdrawal
-  Widget _buildRequestWithdrawalButton() {
-    return ElevatedButton.icon(
-      style: ElevatedButton.styleFrom(
-        padding: EdgeInsets.symmetric(vertical: 15, horizontal: 30),
-        backgroundColor: Colors.amber[800],
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      ),
-      icon: Icon(Icons.request_page, size: 26),
-      label: Text("Request Withdrawal", style: TextStyle(fontSize: 18)),
-      onPressed: _showBankInfoDialog,
     );
   }
 
@@ -195,7 +237,11 @@ class _EarningsPageState extends State<EarningsPage> {
           .snapshots(),
       builder: (context, snapshot) {
         if (!snapshot.hasData) {
-          return Center(child: CircularProgressIndicator());
+          return Center(
+            child: CircularProgressIndicator(
+              color: Colors.amber[800],
+            ),
+          );
         }
 
         var solvedChats = snapshot.data!.docs;
@@ -204,7 +250,7 @@ class _EarningsPageState extends State<EarningsPage> {
           return Center(
             child: Text(
               "No transactions found.",
-              style: TextStyle(color: Colors.grey, fontSize: 16),
+              style: TextStyle(color: Colors.grey[600], fontSize: 16),
             ),
           );
         }
@@ -226,27 +272,37 @@ class _EarningsPageState extends State<EarningsPage> {
   }
 
   // Card for each solved transaction
-  Widget _buildTransactionCard(String questionId, String userId, DateTime date, int cost) {
+  Widget _buildTransactionCard(
+      String questionId, String userId, DateTime date, int cost) {
     return Card(
-      elevation: 5,
-      margin: EdgeInsets.symmetric(vertical: 10),
+      color: Colors.white,
+      elevation: 3,
+      margin: EdgeInsets.symmetric(vertical: 8),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
       child: ListTile(
-        contentPadding: EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+        contentPadding: EdgeInsets.symmetric(vertical: 15, horizontal: 20),
+        leading: Icon(
+          Icons.chat_bubble_outline,
+          color: Colors.amber[800],
+          size: 30,
+        ),
         title: Text(
           "Question ID: $questionId",
-          style: TextStyle(fontWeight: FontWeight.bold),
+          style: TextStyle(
+            color: Colors.grey[800],
+            fontWeight: FontWeight.bold,
+          ),
         ),
         subtitle: Text(
           "User ID: $userId\nDate: ${DateFormat('yyyy-MM-dd HH:mm').format(date)}",
-          style: TextStyle(color: Colors.grey[700]),
+          style: TextStyle(color: Colors.grey[600]),
         ),
         trailing: Text(
           "\$$cost",
           style: TextStyle(
             color: Colors.green[700],
             fontWeight: FontWeight.bold,
-            fontSize: 18,
+            fontSize: 20,
           ),
         ),
       ),

@@ -238,22 +238,3 @@ class _AstrologerLoginPageState extends State<AstrologerLoginPage> {
     );
   }
 }
-
-// Placeholder for the AstrologersHome page (Navigate to this page after a successful login)
-class AstrologersHome extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text("Astrologer's Dashboard"),
-        backgroundColor: Colors.amber[800],
-      ),
-      body: Center(
-        child: Text(
-          "Welcome to Astrologer's Home Page",
-          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-        ),
-      ),
-    );
-  }
-}

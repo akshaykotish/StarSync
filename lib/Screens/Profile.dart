@@ -139,11 +139,18 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
         children: [
           // Background Image
           Container(
+            margin: EdgeInsets.only(
+              top: 10,
+              bottom: 10,
+              left: 10,
+              right: 10
+            ),
             decoration: BoxDecoration(
               image: DecorationImage(
                 image: AssetImage('assets/background.png'), // Add your background image here
                 fit: BoxFit.cover,
               ),
+              borderRadius: BorderRadius.circular(10)
             ),
           ),
           // Wrap the main content in SingleChildScrollView to handle overflow
@@ -158,31 +165,33 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
                     opacity: _fadeAnimation,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.center,
+                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
+                        SizedBox(height: 20,),
                         // Top logo image
                         Image.asset(
                           'assets/logo.png', // Add your logo image here
-                          height: 150,
-                          width: 150,
+                          height: 100,
+                          width: 100,
                         ),
                         SizedBox(height: 10),
 
                         // Page Title
                         Text(
-                          "StarSync - True Astrology",
+                          "StarSync - The Real Astrology",
                           style: TextStyle(
                             color: Colors.black,
                             fontWeight: FontWeight.bold,
-                            fontSize: 28,
+                            fontSize: 18,
                           ),
                         ),
                         SizedBox(height: 10),
                         Text(
-                          "Your Kundali",
+                          "Your Birth Details",
                           style: TextStyle(
                             color: Colors.black,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 20,
+                            fontWeight: FontWeight.w300,
+                            fontSize: 14,
                           ),
                         ),
                         SizedBox(height: 10),
@@ -194,7 +203,7 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
                           hint: "Enter your name",
                           icon: Icons.person,
                         ),
-                        SizedBox(height: 20),
+                        SizedBox(height: 15),
 
                         // Contact Number field with label
                         _buildLabel("Contact Number"),
@@ -204,7 +213,7 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
                           icon: Icons.phone,
                           keyboardType: TextInputType.phone,
                         ),
-                        SizedBox(height: 20),
+                        SizedBox(height: 15),
 
                         // Date of Birth Picker
                         _buildLabel("Date of Birth"),
@@ -212,7 +221,7 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
                           label: _formatDate(),
                           onTap: _pickDate,
                         ),
-                        SizedBox(height: 20),
+                        SizedBox(height: 15),
 
                         // Time of Birth Picker
                         _buildLabel("Time of Birth"),
@@ -220,12 +229,12 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
                           label: _formatTime(),
                           onTap: _pickTime,
                         ),
-                        SizedBox(height: 20),
+                        SizedBox(height: 15),
 
                         // Location field with Label and suggestions
                         _buildLabel("Location of Birth"),
                         _buildLocationTextField(),
-                        SizedBox(height: 20),
+                        SizedBox(height: 15),
                         if (showSuggestions && filteredCities.isNotEmpty)
                           _buildSuggestions(),
 
@@ -270,7 +279,7 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
                         ElevatedButton(
                           onPressed: saveProfile,
                           style: ElevatedButton.styleFrom(
-                            foregroundColor: Colors.black, backgroundColor: Colors.amber[800], // Dark yellow button
+                            foregroundColor: Colors.black, backgroundColor: Colors.amber, // Dark yellow button
                             padding: EdgeInsets.symmetric(horizontal: 50, vertical: 15),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
@@ -278,7 +287,7 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
                             elevation: 5,
                           ),
                           child: Text(
-                            "Create Kundali",
+                            "Process Chart",
                             style: TextStyle(fontSize: 16, color: Colors.white, fontWeight: FontWeight.bold),
                           ),
                         ),
@@ -338,7 +347,7 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
         decoration: InputDecoration(
           hintText: hint,
           hintStyle: TextStyle(color: Colors.black54),
-          prefixIcon: Icon(icon, color: Colors.amber[800]), // Updated icon color to match dark yellow
+          prefixIcon: Icon(icon, color: Colors.amber), // Updated icon color to match dark yellow
           border: InputBorder.none,
         ),
         textAlign: TextAlign.left,
@@ -352,7 +361,7 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
     return InkWell(
       onTap: onTap,
       child: Container(
-        padding: EdgeInsets.symmetric(horizontal: 10, vertical: 20),
+        padding: EdgeInsets.symmetric(horizontal: 8, vertical: 15),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(12),
@@ -366,7 +375,7 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
         ),
         child: Row(
           children: [
-            Icon(Icons.calendar_today, color: Colors.amber[800]),
+            Icon(Icons.calendar_today, color: Colors.amber),
             SizedBox(width: 15),
             Text(
               label,
@@ -383,7 +392,7 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
     return InkWell(
       onTap: onTap,
       child: Container(
-        padding: EdgeInsets.symmetric(horizontal: 10, vertical: 20),
+        padding: EdgeInsets.symmetric(horizontal: 8, vertical: 15),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(12),
@@ -397,7 +406,7 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
         ),
         child: Row(
           children: [
-            Icon(Icons.access_time, color: Colors.amber[800]),
+            Icon(Icons.access_time, color: Colors.amber),
             SizedBox(width: 15),
             Text(
               label,
@@ -430,7 +439,7 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
         decoration: InputDecoration(
           hintText: "Type your location",
           hintStyle: TextStyle(color: Colors.black54),
-          prefixIcon: Icon(Icons.location_on, color: Colors.amber[800]), // Updated icon color to match dark yellow
+          prefixIcon: Icon(Icons.location_on, color: Colors.amber), // Updated icon color to match dark yellow
           border: InputBorder.none,
         ),
         textAlign: TextAlign.left,
@@ -498,7 +507,7 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
       duration: Duration(milliseconds: 300),
       curve: Curves.easeInOut,
       decoration: BoxDecoration(
-        color: selected ? Colors.amber[800] : Colors.white,
+        color: selected ? Colors.amber : Colors.white,
         borderRadius: BorderRadius.circular(10), // Updated to a radius of 10
         boxShadow: [
           BoxShadow(
@@ -511,7 +520,7 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
       child: ElevatedButton(
         onPressed: onPressed,
         style: ElevatedButton.styleFrom(
-          foregroundColor: selected ? Colors.white : Colors.black, backgroundColor: selected ? Colors.amber[800] : Colors.white,
+          foregroundColor: selected ? Colors.white : Colors.black, backgroundColor: selected ? Colors.amber : Colors.white,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(10), // Updated to a radius of 10
           ),
@@ -522,7 +531,7 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
           children: [
             Icon(
               icon,
-              color: selected ? Colors.white : Colors.amber[800],
+              color: selected ? Colors.white : Colors.amber,
             ),
             SizedBox(width: 10),
             Text(

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:starsyncapp/Screens/Profile.dart';
 
 // Stateful widget for "Profile" page
 class AstrologerProfile extends StatefulWidget {
@@ -13,9 +12,11 @@ class _AstrologerProfileState extends State<AstrologerProfile> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   String? astrologerId;
   bool _passwordChanged = false;
-  final TextEditingController _currentPasswordController = TextEditingController();
+  final TextEditingController _currentPasswordController =
+  TextEditingController();
   final TextEditingController _newPasswordController = TextEditingController();
-  final TextEditingController _confirmPasswordController = TextEditingController();
+  final TextEditingController _confirmPasswordController =
+  TextEditingController();
 
   @override
   void initState() {
@@ -37,7 +38,8 @@ class _AstrologerProfileState extends State<AstrologerProfile> {
 
     try {
       // Get the current astrologer document
-      DocumentSnapshot astrologerDoc = await _firestore.collection('astrologers').doc(astrologerId).get();
+      DocumentSnapshot astrologerDoc =
+      await _firestore.collection('astrologers').doc(astrologerId).get();
 
       if (astrologerDoc.exists) {
         String storedPassword = astrologerDoc['password'];
@@ -53,7 +55,9 @@ class _AstrologerProfileState extends State<AstrologerProfile> {
         // Validate new password and confirm password match
         if (_newPasswordController.text != _confirmPasswordController.text) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("New password and confirm password do not match.")),
+            SnackBar(
+                content:
+                Text("New password and confirm password do not match.")),
           );
           return;
         }
@@ -86,70 +90,71 @@ class _AstrologerProfileState extends State<AstrologerProfile> {
   // Logout functionality
   Future<void> _logout() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    await prefs.clear();  // Clear shared preferences
+    await prefs.clear(); // Clear shared preferences
 
     // Navigate back to the login screen (or any other screen you want)
-    Navigator.pushReplacement(context, MaterialPageRoute(builder: (context)=>ProfilePage())); // Adjust the route name for your LoginPage
+    Navigator.pushNamedAndRemoveUntil(
+        context, '/login', (Route<dynamic> route) => false);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white, // Light background
       appBar: AppBar(
-        title: Text("Profile", style: Theme.of(context).textTheme.titleLarge),
-        backgroundColor: Theme.of(context).primaryColor,
+        title: Text(
+          "Profile",
+          style: TextStyle(color: Colors.black),
+        ),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        iconTheme: IconThemeData(color: Colors.black), // Back button color
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(20.0),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Profile Information Section (optional: Add profile details)
-            Text(
-              "Profile Information",
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            SizedBox(height: 20),
+            // Profile Picture and Name (Optional)
+            _buildProfileHeader(),
+
+            SizedBox(height: 30),
 
             // Password Change Section
             _buildPasswordChangeSection(),
 
-            SizedBox(height: 20),
-
-            ElevatedButton(
-              onPressed: _changePassword,
-              style: ElevatedButton.styleFrom(
-                padding: EdgeInsets.symmetric(vertical: 15, horizontal: 30),
-                backgroundColor: Colors.amber[800],
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-              ),
-              child: Text("Change Password", style: TextStyle(fontSize: 18)),
-            ),
-
-            if (_passwordChanged)
-              Padding(
-                padding: const EdgeInsets.only(top: 20.0),
-                child: Text(
-                  "Password has been changed successfully.",
-                  style: TextStyle(color: Colors.green),
-                ),
-              ),
-
             SizedBox(height: 30),
 
             // Logout Button
-            ElevatedButton(
-              onPressed: _logout,
-              style: ElevatedButton.styleFrom(
-                padding: EdgeInsets.symmetric(vertical: 15, horizontal: 30),
-                backgroundColor: Colors.red[700],
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-              ),
-              child: Text("Logout", style: TextStyle(fontSize: 18)),
-            ),
+            _buildLogoutButton(),
           ],
         ),
       ),
+    );
+  }
+
+  // Build Profile Header with Avatar and Name
+  Widget _buildProfileHeader() {
+    return Column(
+      children: [
+        CircleAvatar(
+          radius: 60,
+          backgroundColor: Colors.amber[800],
+          child: Icon(
+            Icons.person,
+            color: Colors.white,
+            size: 60,
+          ),
+        ),
+        SizedBox(height: 15),
+        Text(
+          "StarSync", // Replace with actual name if available
+          style: TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+            color: Colors.grey[800],
+          ),
+        ),
+      ],
     );
   }
 
@@ -160,26 +165,85 @@ class _AstrologerProfileState extends State<AstrologerProfile> {
       children: [
         Text(
           "Change Password",
-          style: Theme.of(context).textTheme.titleLarge,
+          style: TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
+            color: Colors.grey[800],
+          ),
         ),
-        SizedBox(height: 10),
-        _buildPasswordTextField("Current Password", _currentPasswordController, obscureText: true),
-        SizedBox(height: 10),
-        _buildPasswordTextField("New Password", _newPasswordController, obscureText: true),
-        SizedBox(height: 10),
-        _buildPasswordTextField("Confirm New Password", _confirmPasswordController, obscureText: true),
+        SizedBox(height: 20),
+        _buildPasswordTextField(
+            "Current Password", _currentPasswordController),
+        SizedBox(height: 15),
+        _buildPasswordTextField("New Password", _newPasswordController),
+        SizedBox(height: 15),
+        _buildPasswordTextField(
+            "Confirm New Password", _confirmPasswordController),
+        SizedBox(height: 30),
+        ElevatedButton(
+          onPressed: _changePassword,
+          style: ElevatedButton.styleFrom(
+            padding: EdgeInsets.symmetric(vertical: 15, horizontal: 30),
+            backgroundColor: Colors.amber[800],
+            shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+          ),
+          child: Text(
+            "Change Password",
+            style: TextStyle(fontSize: 18, color: Colors.white),
+          ),
+        ),
+        if (_passwordChanged)
+          Padding(
+            padding: const EdgeInsets.only(top: 20.0),
+            child: Text(
+              "Password has been changed successfully.",
+              style: TextStyle(color: Colors.green[700]),
+            ),
+          ),
       ],
     );
   }
 
   // Helper to build password TextFields
-  Widget _buildPasswordTextField(String label, TextEditingController controller, {bool obscureText = false}) {
+  Widget _buildPasswordTextField(
+      String label, TextEditingController controller) {
     return TextField(
       controller: controller,
-      obscureText: obscureText,
+      obscureText: true,
+      cursorColor: Colors.amber[800],
       decoration: InputDecoration(
         labelText: label,
-        border: OutlineInputBorder(),
+        labelStyle: TextStyle(color: Colors.grey[800]),
+        focusedBorder: OutlineInputBorder(
+          borderSide: BorderSide(color: Colors.amber[800]!),
+          borderRadius: BorderRadius.circular(15),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderSide: BorderSide(color: Colors.grey[400]!),
+          borderRadius: BorderRadius.circular(15),
+        ),
+        prefixIcon: Icon(
+          Icons.lock_outline,
+          color: Colors.amber[800],
+        ),
+      ),
+    );
+  }
+
+  // Logout Button
+  Widget _buildLogoutButton() {
+    return ElevatedButton.icon(
+      onPressed: _logout,
+      style: ElevatedButton.styleFrom(
+        padding: EdgeInsets.symmetric(vertical: 15, horizontal: 30),
+        backgroundColor: Colors.red[700],
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+      ),
+      icon: Icon(Icons.logout, color: Colors.white),
+      label: Text(
+        "Logout",
+        style: TextStyle(fontSize: 18, color: Colors.white),
       ),
     );
   }

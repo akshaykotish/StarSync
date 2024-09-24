@@ -139,31 +139,33 @@ class _AnswerQuestionsPageState extends State<AnswerQuestionsPage> {
   @override
   Widget build(BuildContext context) {
     return Container(
+      margin: EdgeInsets.only(
+        top: MediaQuery.of(context).padding.top,
+        left: 10,
+        right: 10,
+        bottom: 10,
+      ),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Colors.amber[800]!, Colors.amber[400]!],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+        borderRadius: BorderRadius.circular(5),
       ),
       child: Column(
         children: [
-          SizedBox(height: 60), // For spacing
           Center(
             child: Text(
               "Answer Questions",
-              style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white),
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                color: Colors.black,
+              ),
             ),
           ),
-          SizedBox(height: 20),
+          SizedBox(height: 10),
           Expanded(
             child: Container(
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(30),
-                  topRight: Radius.circular(30),
-                ),
+                borderRadius: BorderRadius.circular(10),
               ),
               child: StreamBuilder<QuerySnapshot>(
                 stream: _firestore
