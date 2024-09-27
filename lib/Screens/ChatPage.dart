@@ -1,5 +1,9 @@
+import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter_sound/public/flutter_sound_recorder.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart'; // For date and time formatting
 import 'package:image_picker/image_picker.dart';
@@ -9,6 +13,9 @@ import 'package:file_picker/file_picker.dart'; // For audio file picking
 import 'package:starsyncapp/Screens/Profile.dart';
 import 'package:uuid/uuid.dart'; // For generating unique IDs
 import 'package:starsyncapp/Screens/BuyQuestions.dart';
+import 'FullScreenImagePage.dart';
+import 'package:flutter_sound/flutter_sound.dart' as fs;
+import 'package:audioplayers/audioplayers.dart' as ap;
 
 class ChatPage extends StatefulWidget {
   @override
@@ -23,13 +30,48 @@ class _ChatPageState extends State<ChatPage> {
   int availableQuestions = 0;
   final ImagePicker _picker = ImagePicker();
 
+  final FlutterSoundRecorder _recorder = FlutterSoundRecorder();
+  bool _isRecording = false;
+  String? _audioFilePath;
+  String? _audioDownloadUrl;
+
+  bool _isAudioRecorded = false;
+  bool _isPlayingAudio = false;
+  final ap.AudioPlayer _audioPlayer = ap.AudioPlayer();
+
   List<Map<String, dynamic>> selectedMediaFiles = [];
 
   @override
   void initState() {
     super.initState();
+    _initRecorder();
     _loadUserProfile();
+
+
+    // Listen for when the audio player completes playing
+    _audioPlayer.onPlayerComplete.listen((event) {
+      setState(() {
+        _isPlayingAudio = false;
+      });
+    });
+
+    // Optional: Listen for player state changes if you want more control
+    _audioPlayer.onPlayerStateChanged.listen((ap.PlayerState state) {
+      if (state == ap.PlayerState.paused || state == ap.PlayerState.stopped) {
+        setState(() {
+          _isPlayingAudio = false;
+        });
+      }
+    });
   }
+
+  Future<void> _initRecorder() async {
+    await _recorder.openRecorder();
+    await _recorder.setSubscriptionDuration(const Duration(milliseconds: 500));
+  }
+
+
+
   Future<void> _loadUserProfile() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     setState(() {
@@ -79,6 +121,89 @@ class _ChatPageState extends State<ChatPage> {
     }
   }
 
+  Future<void> _recordAudio() async {
+    if (_isRecording) return;
+
+    var status = await Permission.microphone.request();
+    if (status != PermissionStatus.granted) {
+      print("Microphone permission not granted");
+      return;
+    }
+
+    // Get the absolute file path to store the audio
+    String audioFilePath = await getFilePath('audio.aac');
+    _audioFilePath = audioFilePath;
+
+
+    setState(() {
+      _isRecording = true;
+    });
+
+    // Start recording and specify the absolute path for the output file
+    await _recorder.startRecorder(
+      toFile: audioFilePath,  // Save the audio in the app's documents directory
+      codec: fs.Codec.aacADTS,       // Set the codec to mp3
+    );
+    print("Recording started, saving at: $audioFilePath");
+  }
+
+  Future<void> _stopRecording() async {
+    if (!_isRecording) return;
+
+    await _recorder.stopRecorder();
+    setState(() {
+      _isRecording = false;
+    });
+
+    // Get the absolute file path of the recorded audio
+    String audioFilePath = await getFilePath('audio.aac');
+    File recordedFile = File(audioFilePath);
+    print("Recording stopped and saved at: $audioFilePath");
+
+    setState(() {
+      _isRecording = false;
+      _isAudioRecorded = true;
+      _audioFilePath = audioFilePath;
+    });
+    _uploadAudio(recordedFile);
+  }
+
+  // Get the file path where the audio will be stored
+  Future<String> getFilePath(String filename) async {
+    final directory = await getApplicationDocumentsDirectory();
+    return '${directory.path}/$filename';
+  }
+
+
+// Upload the audio file to Firebase Storage
+  Future<void> _uploadAudio(File audioFile) async {
+    String absolutePath = audioFile.path;
+
+    if (!audioFile.existsSync()) {
+      print("File does not exist at path: $absolutePath");
+      return;
+    }
+
+    print("Uploading file at path: $absolutePath");
+
+    String fileId = Uuid().v4();
+    Reference storageRef = _storage.ref().child('chat_media/$userId/audio/$fileId.mp3');
+
+    try {
+      TaskSnapshot uploadTask = await storageRef.putFile(audioFile);
+      String downloadUrl = await uploadTask.ref.getDownloadURL();
+
+      setState(() {
+        _audioDownloadUrl = downloadUrl;
+      });
+
+      //_sendQuestion("I recorded my question");  // Trigger sending the message
+    } catch (e) {
+      print("Error uploading audio: $e");
+    }
+  }
+
+
 
   Future<void> _sendQuestion(String messageText) async {
     if ((messageText.trim().isNotEmpty || selectedMediaFiles.isNotEmpty) && availableQuestions > 0) {
@@ -103,13 +228,24 @@ class _ChatPageState extends State<ChatPage> {
 
       List<Map<String, String>> uploadedFiles = [];
 
+      if (_audioDownloadUrl != null) {
+        uploadedFiles.add({
+          'media_url': _audioDownloadUrl!,
+          'media_type': 'audio',
+        });
+      }
+
+
       // Upload each selected file
       for (var fileData in selectedMediaFiles) {
         String? mediaUrl = await _uploadMedia(fileData['file'], fileData['mediaType']);
         if (mediaUrl != null) {
           uploadedFiles.add({'media_url': mediaUrl, 'media_type': fileData['mediaType']});
+          print(uploadedFiles.length);
         }
       }
+
+
 
       // **Include purchaseId when saving the message document**
       await _firestore.collection('users').doc(userId).collection('message').doc(questionId).set({
@@ -150,8 +286,13 @@ class _ChatPageState extends State<ChatPage> {
       // Clear the input field and selected media files
       _messageController.clear();
       selectedMediaFiles.clear();
-      setState(() {});
-    } else {
+      setState(() {
+        _isAudioRecorded = false;
+        _audioFilePath = null;
+        _audioDownloadUrl = null;
+      });
+    }
+    else {
       print("No available questions or invalid input.");
       _navigateToBuyQuestionsPage();
     }
@@ -284,6 +425,111 @@ class _ChatPageState extends State<ChatPage> {
     return DateFormat('yyyyMMdd').format(currentDate) != DateFormat('yyyyMMdd').format(nextDate);
   }
 
+  Widget _buildRecordingButton() {
+    return GestureDetector(
+      onLongPressStart: (_) => _recordAudio(),
+      onLongPressEnd: (_) => _stopRecording(),
+      child: Icon(
+        _isRecording ? Icons.mic_off : Icons.mic,
+        color: _isRecording ? Colors.red : Colors.black,
+        size: 28,
+      ),
+    );
+  }
+
+  Widget _sendTextMessageUI(){
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.all(Radius.circular(15)),
+      ),
+      padding: const EdgeInsets.all(8.0),
+      margin: EdgeInsets.all(10),
+      child: Row(
+        children: [
+          IconButton(
+            icon: Icon(Icons.add, color: Colors.amber[800], size: 28),
+            onPressed: _showMediaOptions,
+          ),
+          _buildRecordingButton(), // Audio recording button
+          Expanded(
+            child: ConstrainedBox(
+              constraints: BoxConstraints(maxHeight: 120),
+              child: Scrollbar(
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.vertical,
+                  reverse: true,
+                  child: TextField(
+                    controller: _messageController,
+                    maxLines: null,
+                    decoration: InputDecoration(
+                      hintText: "Enter your message...",
+                      border: InputBorder.none,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          IconButton(
+            icon: Icon(Icons.send, color: Colors.amber[800]),
+            onPressed: () {
+              _sendQuestion(_messageController.text);
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAudioReviewUI() {
+    return Container(
+      padding: EdgeInsets.all(1),
+      margin: EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(15),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black12,
+            blurRadius: 5,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          SizedBox(height: 10),
+          // Control buttons
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              IconButton(
+                icon: Icon(_isPlayingAudio ? Icons.pause : Icons.play_arrow),
+                iconSize: 36,
+                color: Colors.black,
+                onPressed: _playPauseAudio,
+              ),
+              _buildRecordingButton(),
+              IconButton(
+                icon: Icon(Icons.delete),
+                iconSize: 36,
+                color: Colors.black,
+                onPressed: _deleteRecordedAudio,
+              ),
+              IconButton(
+                icon: Icon(Icons.send),
+                iconSize: 36,
+                color: Colors.black,
+                onPressed: _sendRecordedAudio,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final double screenHeight = MediaQuery.of(context).size.height;
@@ -347,15 +593,18 @@ class _ChatPageState extends State<ChatPage> {
                             ),
                             SizedBox(width: 20,),
                             GestureDetector(
-                              onTap: (){
-                                Navigator.push(context, MaterialPageRoute(builder: (context) => ProfilePage()));
+                              onTap: () async {
+                                SharedPreferences prefs = await SharedPreferences.getInstance();
+                                await prefs.clear(); // Clear shared preferences
+
+                                Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => ProfilePage()));
                               },
                               child: Container(
                                 child: Row(
                                   children: <Widget>[
                                     Icon(Icons.stars_outlined,),
                                     SizedBox(width: 5,),
-                                    Text(name!.substring(0, 6) + "..")
+                                    Text(name.toString().length > 6 ? name.toString().substring(0, 6) + ".." : name.toString())
                                   ],
                                 ),
                               ),
@@ -578,7 +827,21 @@ class _ChatPageState extends State<ChatPage> {
                                                       Column(
                                                         children: (currentMessage['media_files'] as List<dynamic>).map((media) {
                                                           if (media['media_type'] == 'image') {
-                                                            return Image.network(media['media_url']);
+                                                            return GestureDetector(
+                                                              onTap: () {
+                                                                Navigator.push(
+                                                                  context,
+                                                                  MaterialPageRoute(
+                                                                    builder: (_) => FullScreenImagePage(imageUrl: media['media_url']),
+                                                                  ),
+                                                                );
+                                                              },
+                                                              child: Image.network(
+                                                                media['media_url'],
+                                                                height: 150, // You can adjust the height as needed
+                                                                fit: BoxFit.cover,
+                                                              ),
+                                                            );
                                                           } else if (media['media_type'] == 'video') {
                                                             return Icon(Icons.play_circle_outline);
                                                           } else if (media['media_type'] == 'audio') {
@@ -633,47 +896,11 @@ class _ChatPageState extends State<ChatPage> {
                     },
                   ),
                 ),
-                Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.all(Radius.circular(15)),
-                  ),
-                  padding: const EdgeInsets.all(8.0),
-                  margin: EdgeInsets.all(10),
-                  child: Row(
-                    children: [
-                      IconButton(
-                        icon: Icon(Icons.add, color: Colors.amber[800], size: 28),
-                        onPressed: _showMediaOptions,
-                      ),
-                      Expanded(
-                        child: ConstrainedBox(
-                          constraints: BoxConstraints(maxHeight: 120),
-                          child: Scrollbar(
-                            child: SingleChildScrollView(
-                              scrollDirection: Axis.vertical,
-                              reverse: true,
-                              child: TextField(
-                                controller: _messageController,
-                                maxLines: null,
-                                decoration: InputDecoration(
-                                  hintText: "Enter your message...",
-                                  border: InputBorder.none,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                      IconButton(
-                        icon: Icon(Icons.send, color: Colors.amber[800]),
-                        onPressed: () {
-                          _sendQuestion(_messageController.text);
-                        },
-                      ),
-                    ],
-                  ),
-                ),
+                if (!_isAudioRecorded)
+                  _sendTextMessageUI()
+
+                else if(_isAudioRecorded)
+                  _buildAudioReviewUI()
               ],
             ),
           ],
@@ -681,4 +908,80 @@ class _ChatPageState extends State<ChatPage> {
       ),
     );
   }
+
+  @override
+  void dispose() {
+    _recorder.closeRecorder();
+    _audioPlayer.dispose(); // Dispose the audio player
+    super.dispose();
+    super.dispose();
+  }
+
+
+  Widget _buildAudioPlayer(String audioUrl) {
+    final AudioPlayer audioPlayer = AudioPlayer();
+
+    return Row(
+      children: [
+        IconButton(
+          icon: Icon(Icons.play_arrow),
+          onPressed: () async {
+            await audioPlayer.play(UrlSource(audioUrl)); // Use UrlSource for network URLs
+          },
+        ),
+        IconButton(
+          icon: Icon(Icons.stop),
+          onPressed: () async {
+            await audioPlayer.stop();
+          },
+        ),
+      ],
+    );
+  }
+
+
+  void _playPauseAudio() async {
+    if (_audioFilePath == null) {
+      print("No audio file to play.");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("No audio recorded to play.")),
+      );
+      return;
+    }
+
+    if (_isPlayingAudio) {
+      // Pause the audio
+        await _audioPlayer.pause();
+        setState(() {
+          _isPlayingAudio = false;
+        });
+    } else {
+      // Play the audio
+      await _audioPlayer.play(DeviceFileSource(_audioFilePath!));
+      setState(() {
+        _isPlayingAudio = true;
+      });
+    }
+  }
+
+  void _deleteRecordedAudio() {
+    if (_audioFilePath != null) {
+      File recordedFile = File(_audioFilePath!);
+      if (recordedFile.existsSync()) {
+        recordedFile.deleteSync();
+        setState(() {
+          _isAudioRecorded = false;
+          _audioFilePath = null;
+          _audioDownloadUrl = null;
+          _isPlayingAudio = false;
+        });
+        print("Recorded audio deleted.");
+      }
+    }
+  }
+
+  void _sendRecordedAudio() {
+    _sendQuestion(_messageController.text);
+  }
 }
+

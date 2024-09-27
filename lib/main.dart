@@ -1,3 +1,5 @@
+import 'package:firebase_app_check/firebase_app_check.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -11,6 +13,14 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   ); // Initialize Firebase
+
+  await FirebaseAppCheck.instance.activate(
+    //androidProvider: AndroidProvider.playIntegrity,
+    // For iOS, you might use AppleProvider.appAttest or AppleProvider.deviceCheck
+    androidProvider: AndroidProvider.debug,
+    appleProvider: AppleProvider.debug,
+  );
+
   runApp(const MyApp());
 }
 
@@ -28,7 +38,29 @@ class _MyAppState extends State<MyApp> {
   @override
   void initState() {
     super.initState();
+    signInAnonymously();
+
+
     _checkIfProfileOrAstrologerExists(); // Check for saved profile or astrologer login
+  }
+
+  signInAnonymously() async {
+    User? user = FirebaseAuth.instance.currentUser;
+
+    if (user == null) {
+      // User is not signed in, proceed to sign in
+      await signInUser();
+    }
+  }
+
+  // Sign in anonymously
+  Future<void> signInUser() async {
+    try {
+      await FirebaseAuth.instance.signInAnonymously();
+      print('User signed in anonymously');
+    } on FirebaseAuthException catch (e) {
+      print('Error signing in: ${e.code} - ${e.message}');
+    }
   }
 
   // Check if profile or astrologer data is already saved in SharedPreferences

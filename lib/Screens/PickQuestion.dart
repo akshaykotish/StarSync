@@ -2,6 +2,8 @@
   import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'FullScreenImagePage.dart';
+
   class PickQuestionPage extends StatefulWidget {
     @override
     _PickQuestionPageState createState() => _PickQuestionPageState();
@@ -162,10 +164,37 @@ import 'package:shared_preferences/shared_preferences.dart';
                             border: Border.all(color: Colors.grey[300]!),
                           ),
                           child: Text(
-                            questionData['message_text'],
+                            questionData['message_text'].toString() == "null" ? "Image" : questionData['message_text'].toString(),
                             style: TextStyle(fontSize: 16, color: Colors.black87),
                           ),
                         ),
+                        if (questionData['media_files'] != null)
+                          Column(
+                            children: (questionData['media_files'] as List<dynamic>).map((media) {
+                              if (media['media_type'] == 'image') {
+                                return GestureDetector(
+                                  onTap: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => FullScreenImagePage(imageUrl: media['media_url']),
+                                      ),
+                                    );
+                                  },
+                                  child: Image.network(
+                                    media['media_url'],
+                                    height: 150, // You can adjust the height as needed
+                                    fit: BoxFit.cover,
+                                  ),
+                                );
+                              } else if (media['media_type'] == 'video') {
+                                return Icon(Icons.play_circle_outline);
+                              } else if (media['media_type'] == 'audio') {
+                                return Icon(Icons.audiotrack);
+                              }
+                              return SizedBox.shrink();
+                            }).toList(),
+                          ),
 
                         SizedBox(height: 20),
 

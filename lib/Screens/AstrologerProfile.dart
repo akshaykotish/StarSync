@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:starsyncapp/Screens/Profile.dart';
 
 // Stateful widget for "Profile" page
 class AstrologerProfile extends StatefulWidget {
@@ -93,8 +94,8 @@ class _AstrologerProfileState extends State<AstrologerProfile> {
     await prefs.clear(); // Clear shared preferences
 
     // Navigate back to the login screen (or any other screen you want)
-    Navigator.pushNamedAndRemoveUntil(
-        context, '/login', (Route<dynamic> route) => false);
+    Navigator.pushReplacement(
+        context, MaterialPageRoute(builder: (context)=>ProfilePage()));
   }
 
   @override

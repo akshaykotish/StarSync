@@ -4,7 +4,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart'; // For date and time formatting
 import 'package:image_picker/image_picker.dart';
 import 'package:uuid/uuid.dart'; // For generating unique IDs
-import 'dart:async'; // For timer
+import 'dart:async';
+
+import 'FullScreenImagePage.dart'; // For timer
 
 class AstrologerChatPage extends StatefulWidget {
   final String userId;
@@ -593,34 +595,31 @@ class _AstrologerChatPageState extends State<AstrologerChatPage> {
                                                                 color: Colors.black,
                                                               ),
                                                             ),
-                                                          if (currentMessage[
-                                                          'media_files'] !=
-                                                              null)
+                                                          if (currentMessage['media_files'] != null)
                                                             Column(
-                                                              children: (currentMessage[
-                                                              'media_files']
-                                                              as List<
-                                                                  dynamic>)
-                                                                  .map((media) {
-                                                                if (media[
-                                                                'media_type'] ==
-                                                                    'image') {
-                                                                  return Image.network(
-                                                                      media[
-                                                                      'media_url']);
-                                                                } else if (media[
-                                                                'media_type'] ==
-                                                                    'video') {
-                                                                  return Icon(Icons
-                                                                      .play_circle_outline);
-                                                                } else if (media[
-                                                                'media_type'] ==
-                                                                    'audio') {
-                                                                  return Icon(Icons
-                                                                      .audiotrack);
+                                                              children: (currentMessage['media_files'] as List<dynamic>).map((media) {
+                                                                if (media['media_type'] == 'image') {
+                                                                  return GestureDetector(
+                                                                    onTap: () {
+                                                                      Navigator.push(
+                                                                        context,
+                                                                        MaterialPageRoute(
+                                                                          builder: (_) => FullScreenImagePage(imageUrl: media['media_url']),
+                                                                        ),
+                                                                      );
+                                                                    },
+                                                                    child: Image.network(
+                                                                      media['media_url'],
+                                                                      height: 150, // You can adjust the height as needed
+                                                                      fit: BoxFit.cover,
+                                                                    ),
+                                                                  );
+                                                                } else if (media['media_type'] == 'video') {
+                                                                  return Icon(Icons.play_circle_outline);
+                                                                } else if (media['media_type'] == 'audio') {
+                                                                  return Icon(Icons.audiotrack);
                                                                 }
-                                                                return SizedBox
-                                                                    .shrink();
+                                                                return SizedBox.shrink();
                                                               }).toList(),
                                                             ),
                                                           SizedBox(height: 5),
