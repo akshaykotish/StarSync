@@ -1,3 +1,4 @@
+import 'package:audio_waveforms/audio_waveforms.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -13,9 +14,14 @@ import 'package:file_picker/file_picker.dart'; // For audio file picking
 import 'package:starsyncapp/Screens/Profile.dart';
 import 'package:uuid/uuid.dart'; // For generating unique IDs
 import 'package:starsyncapp/Screens/BuyQuestions.dart';
+import 'AudioPlayerWidget.dart';
+import 'AudioWaveFormWidget.dart';
 import 'FullScreenImagePage.dart';
 import 'package:flutter_sound/flutter_sound.dart' as fs;
 import 'package:audioplayers/audioplayers.dart' as ap;
+
+import 'SineWave.dart';
+import 'VideoPlayerWidget.dart';
 
 class ChatPage extends StatefulWidget {
   @override
@@ -39,6 +45,9 @@ class _ChatPageState extends State<ChatPage> {
   bool _isPlayingAudio = false;
   final ap.AudioPlayer _audioPlayer = ap.AudioPlayer();
 
+  Duration _currentPosition = Duration.zero;
+  Duration _totalDuration = Duration.zero;
+
   List<Map<String, dynamic>> selectedMediaFiles = [];
 
   @override
@@ -50,18 +59,38 @@ class _ChatPageState extends State<ChatPage> {
 
     // Listen for when the audio player completes playing
     _audioPlayer.onPlayerComplete.listen((event) {
-      setState(() {
-        _isPlayingAudio = false;
-      });
+      _resetAudioAndWaveform();
     });
 
-    // Optional: Listen for player state changes if you want more control
+    // Listen for player state changes
     _audioPlayer.onPlayerStateChanged.listen((ap.PlayerState state) {
       if (state == ap.PlayerState.paused || state == ap.PlayerState.stopped) {
         setState(() {
           _isPlayingAudio = false;
         });
       }
+    });
+
+    // Listen for audio position changes
+    _audioPlayer.onPositionChanged.listen((Duration position) {
+      setState(() {
+        _currentPosition = position;
+      });
+    });
+
+    // Listen for audio duration changes
+    _audioPlayer.onDurationChanged.listen((Duration duration) {
+      setState(() {
+        _totalDuration = duration;
+      });
+    });
+
+    // Listen for when the audio player completes playing
+    _audioPlayer.onPlayerComplete.listen((event) {
+      setState(() {
+        _isPlayingAudio = false;
+        _currentPosition = Duration.zero;
+      });
     });
   }
 
@@ -165,6 +194,7 @@ class _ChatPageState extends State<ChatPage> {
       _isAudioRecorded = true;
       _audioFilePath = audioFilePath;
     });
+
     _uploadAudio(recordedFile);
   }
 
@@ -196,6 +226,7 @@ class _ChatPageState extends State<ChatPage> {
       setState(() {
         _audioDownloadUrl = downloadUrl;
       });
+
 
       //_sendQuestion("I recorded my question");  // Trigger sending the message
     } catch (e) {
@@ -446,31 +477,35 @@ class _ChatPageState extends State<ChatPage> {
       padding: const EdgeInsets.all(8.0),
       margin: EdgeInsets.all(10),
       child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           IconButton(
             icon: Icon(Icons.add, color: Colors.amber[800], size: 28),
             onPressed: _showMediaOptions,
           ),
           _buildRecordingButton(), // Audio recording button
-          Expanded(
-            child: ConstrainedBox(
-              constraints: BoxConstraints(maxHeight: 120),
-              child: Scrollbar(
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.vertical,
-                  reverse: true,
-                  child: TextField(
-                    controller: _messageController,
-                    maxLines: null,
-                    decoration: InputDecoration(
-                      hintText: "Enter your message...",
-                      border: InputBorder.none,
+          if(_isRecording)
+            Expanded(child: SineWaveWidget(isPlaying: true,)),
+          if(!_isRecording)
+            Expanded(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(maxHeight: 120),
+                child: Scrollbar(
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.vertical,
+                    reverse: true,
+                    child: TextField(
+                      controller: _messageController,
+                      maxLines: null,
+                      decoration: InputDecoration(
+                        hintText: "Enter your message...",
+                        border: InputBorder.none,
+                      ),
                     ),
                   ),
                 ),
               ),
             ),
-          ),
           IconButton(
             icon: Icon(Icons.send, color: Colors.amber[800]),
             onPressed: () {
@@ -482,9 +517,53 @@ class _ChatPageState extends State<ChatPage> {
     );
   }
 
+
+  Future<void> _playPauseAudioAndWaveform() async {
+    if (_audioFilePath == null) {
+      print("No audio file to play.");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("No audio recorded to play.")),
+      );
+      return;
+    }
+
+    if (_isPlayingAudio) {
+      try {
+        await _audioPlayer.pause();
+        setState(() {
+          _isPlayingAudio = false;
+        });
+      } catch (e) {
+        print("Error pausing audio: $e");
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Failed to pause audio.")),
+        );
+      }
+    } else {
+      try {
+        await _audioPlayer.play(DeviceFileSource(_audioFilePath!));
+        setState(() {
+          _isPlayingAudio = true;
+        });
+      } catch (e) {
+        print("Error playing audio: $e");
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Failed to play audio.")),
+        );
+      }
+    }
+  }
+
+  void _resetAudioAndWaveform() {
+    setState(() {
+      _isPlayingAudio = false;
+      _currentPosition = Duration.zero;
+    });
+  }
+
   Widget _buildAudioReviewUI() {
     return Container(
-      padding: EdgeInsets.all(1),
+      padding: EdgeInsets.all(8),
       margin: EdgeInsets.all(10),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -497,38 +576,40 @@ class _ChatPageState extends State<ChatPage> {
           ),
         ],
       ),
-      child: Column(
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          SizedBox(height: 10),
-          // Control buttons
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              IconButton(
-                icon: Icon(_isPlayingAudio ? Icons.pause : Icons.play_arrow),
-                iconSize: 36,
-                color: Colors.black,
-                onPressed: _playPauseAudio,
-              ),
-              _buildRecordingButton(),
-              IconButton(
-                icon: Icon(Icons.delete),
-                iconSize: 36,
-                color: Colors.black,
-                onPressed: _deleteRecordedAudio,
-              ),
-              IconButton(
-                icon: Icon(Icons.send),
-                iconSize: 36,
-                color: Colors.black,
-                onPressed: _sendRecordedAudio,
-              ),
-            ],
+          IconButton(
+            icon: Icon(_isPlayingAudio ? Icons.pause : Icons.play_arrow),
+            iconSize: 36,
+            color: Colors.amber[800],
+            onPressed: _playPauseAudio,
+          ),
+          Container(
+            child: _isPlayingAudio ? SineWaveWidget(isPlaying: true) : Container(child: SineWaveWidget(isPlaying: false),),
+          ),
+
+          // Container(
+            //   child: AudioWaveformWidget(audioFilePath: _audioFilePath!, controller: _playerController,),
+            // ),
+          _buildRecordingButton(),
+          IconButton(
+            icon: Icon(Icons.delete),
+            iconSize: 36,
+            color: Colors.red,
+            onPressed: _deleteRecordedAudio,
+          ),
+          IconButton(
+            icon: Icon(Icons.send),
+            iconSize: 36,
+            color: Colors.black,
+            onPressed: _sendRecordedAudio,
           ),
         ],
       ),
     );
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -843,9 +924,9 @@ class _ChatPageState extends State<ChatPage> {
                                                               ),
                                                             );
                                                           } else if (media['media_type'] == 'video') {
-                                                            return Icon(Icons.play_circle_outline);
+                                                            return VideoPlayerWidget(videoUrl: media['media_url']);
                                                           } else if (media['media_type'] == 'audio') {
-                                                            return Icon(Icons.audiotrack);
+                                                            return AudioPlayerWidget(audioUrl: media['media_url']);
                                                           }
                                                           return SizedBox.shrink();
                                                         }).toList(),
@@ -939,7 +1020,6 @@ class _ChatPageState extends State<ChatPage> {
     );
   }
 
-
   void _playPauseAudio() async {
     if (_audioFilePath == null) {
       print("No audio file to play.");
@@ -951,18 +1031,33 @@ class _ChatPageState extends State<ChatPage> {
 
     if (_isPlayingAudio) {
       // Pause the audio
+      try {
+        _isPlayingAudio = false;
         await _audioPlayer.pause();
         setState(() {
-          _isPlayingAudio = false;
         });
+      } catch (e) {
+        print("Error pausing audio: $e");
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Failed to pause audio.")),
+        );
+      }
     } else {
       // Play the audio
-      await _audioPlayer.play(DeviceFileSource(_audioFilePath!));
-      setState(() {
+      try {
         _isPlayingAudio = true;
-      });
+        await _audioPlayer.play(DeviceFileSource(_audioFilePath!));
+        setState(() {
+        });
+      } catch (e) {
+        print("Error playing audio: $e");
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Failed to play audio.")),
+        );
+      }
     }
   }
+
 
   void _deleteRecordedAudio() {
     if (_audioFilePath != null) {
@@ -981,7 +1076,7 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   void _sendRecordedAudio() {
-    _sendQuestion(_messageController.text);
+    _sendQuestion("I recorded my message in audio");
   }
 }
 
