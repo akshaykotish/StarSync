@@ -1,5 +1,9 @@
+import 'dart:async';
+
 import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_analytics/firebase_analytics.dart'; // Import FirebaseAnalytics
+import 'package:firebase_analytics/observer.dart'; // Import FirebaseAnalyticsObserver
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -9,7 +13,7 @@ import 'Screens/AstrologersHome.dart'; // Import AstrologersHome screen
 import 'firebase_options.dart';
 
 void main() async {
-  WidgetsFlutterBinding.ensureInitialized(); // Ensure widgets are initialized
+  await WidgetsFlutterBinding.ensureInitialized(); // Ensure widgets are initialized
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   ); // Initialize Firebase
@@ -35,11 +39,24 @@ class _MyAppState extends State<MyApp> {
   bool? isProfileSaved;
   bool? isAstrologerLoggedIn;
 
+  // Declare FirebaseAnalytics and FirebaseAnalyticsObserver
+  late FirebaseAnalytics analytics;
+  late FirebaseAnalyticsObserver observer;
+
   @override
   void initState() {
     super.initState();
+    FirebaseAnalytics.instance.logEvent(name: 'view_${this.runtimeType}');
+
     signInAnonymously();
 
+    // Initialize FirebaseAnalytics and FirebaseAnalyticsObserver
+    analytics = FirebaseAnalytics.instance;
+    observer = FirebaseAnalyticsObserver(analytics: analytics);
+
+
+    analytics.logEvent(name: "App_Logined", parameters: {'InMainFile': "Yes"}).then((value)=>print("EVENTJNJGN Logged"));
+    analytics.setAnalyticsCollectionEnabled(true);
 
     _checkIfProfileOrAstrologerExists(); // Check for saved profile or astrologer login
   }
@@ -50,6 +67,7 @@ class _MyAppState extends State<MyApp> {
     if (user == null) {
       // User is not signed in, proceed to sign in
       await signInUser();
+      analytics.logEvent(name: 'sign_in_anonymously');
     }
   }
 
@@ -58,8 +76,9 @@ class _MyAppState extends State<MyApp> {
     try {
       await FirebaseAuth.instance.signInAnonymously();
       print('User signed in anonymously');
+      analytics.logEvent(name: 'user_signed_in');
     } on FirebaseAuthException catch (e) {
-      print('Error signing in: ${e.code} - ${e.message}');
+      print('Error signing in: \${e.code} - \${e.message}');
     }
   }
 
@@ -75,9 +94,13 @@ class _MyAppState extends State<MyApp> {
     setState(() {
       // If astrologerPhone exists, load AstrologersHome, else check for profile
       if (astrologerPhone != null) {
+        analytics.logEvent(name: 'astrologer_logged_in');
         isAstrologerLoggedIn = true;
       } else {
-        isProfileSaved = name != null; // If profile exists, set true, else false
+        isProfileSaved = name != null;
+        if (isProfileSaved!) {
+          analytics.logEvent(name: 'profile_exists');
+        } // If profile exists, set true, else false
       }
     });
   }
@@ -97,10 +120,12 @@ class _MyAppState extends State<MyApp> {
 
     return MaterialApp(
       title: 'StarSync App',
+      debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
+      navigatorObservers: [observer], // Add FirebaseAnalyticsObserver
       // Load AstrologersHome if astrologer is logged in, otherwise ProfilePage or ChatPage
       home: isAstrologerLoggedIn == true
           ? AstrologersHome()

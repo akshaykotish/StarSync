@@ -1,4 +1,3 @@
-import 'package:audio_waveforms/audio_waveforms.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -11,9 +10,11 @@ import 'package:image_picker/image_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'dart:io';
 import 'package:file_picker/file_picker.dart'; // For audio file picking
+import 'package:starsyncapp/Screens/NeedHelp.dart';
 import 'package:starsyncapp/Screens/Profile.dart';
 import 'package:uuid/uuid.dart'; // For generating unique IDs
 import 'package:starsyncapp/Screens/BuyQuestions.dart';
+import 'Astrologerbranding.dart';
 import 'AudioPlayerWidget.dart';
 import 'AudioWaveFormWidget.dart';
 import 'FullScreenImagePage.dart';
@@ -22,6 +23,10 @@ import 'package:audioplayers/audioplayers.dart' as ap;
 
 import 'SineWave.dart';
 import 'VideoPlayerWidget.dart';
+import 'package:firebase_analytics/firebase_analytics.dart';
+import 'package:firebase_analytics/observer.dart';
+
+
 
 class ChatPage extends StatefulWidget {
   @override
@@ -29,6 +34,8 @@ class ChatPage extends StatefulWidget {
 }
 
 class _ChatPageState extends State<ChatPage> {
+  final FirebaseAnalytics _analytics = FirebaseAnalytics.instance;
+
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseStorage _storage = FirebaseStorage.instance;
   final TextEditingController _messageController = TextEditingController();
@@ -53,6 +60,8 @@ class _ChatPageState extends State<ChatPage> {
   @override
   void initState() {
     super.initState();
+    _analytics.logScreenView(screenName: 'ChatPage');
+
     _initRecorder();
     _loadUserProfile();
 
@@ -174,6 +183,8 @@ class _ChatPageState extends State<ChatPage> {
       codec: fs.Codec.aacADTS,       // Set the codec to mp3
     );
     print("Recording started, saving at: $audioFilePath");
+
+    _analytics.logEvent(name: 'audio_recording_started');
   }
 
   Future<void> _stopRecording() async {
@@ -304,6 +315,13 @@ class _ChatPageState extends State<ChatPage> {
         'status': 'used',
       });
 
+      _analytics.logEvent(name: 'question_sent', parameters: {
+        'user_id': userId!,
+        'message_length': messageText.length,
+        'media_files_count': uploadedFiles.length,
+      });
+
+
       // Update the available questions count
       setState(() {
         availableQuestions--;
@@ -335,6 +353,9 @@ class _ChatPageState extends State<ChatPage> {
       context,
       MaterialPageRoute(builder: (context) => BuyQuestionPage()),
     );
+
+    _analytics.logEvent(name: 'navigated_to_buy_questions');
+
 
     if (result != null && result is bool && result == true) {
       await _loadUserProfile(); // Re-fetch user profile to update availableQuestions
@@ -658,7 +679,6 @@ class _ChatPageState extends State<ChatPage> {
                       Container(
                         child: Row(
                           children: <Widget>[
-                            Icon(Icons.search),
                             SizedBox(width: 20,),
                             GestureDetector(
                               onTap: _navigateToBuyQuestionsPage,
@@ -719,7 +739,9 @@ class _ChatPageState extends State<ChatPage> {
                         ),
                       ),
                       GestureDetector(
-                        onTap: _navigateToBuyQuestionsPage,
+                        onTap: (){
+                          Navigator.push(context, MaterialPageRoute(builder: (context)=>Asrologerbranding()));
+                        },
                         child: Container(
                           padding: EdgeInsets.only(left: 20, right: 20, top: 5, bottom: 5),
                           decoration: BoxDecoration(
@@ -728,15 +750,17 @@ class _ChatPageState extends State<ChatPage> {
                           ),
                           child: Row(
                             children: <Widget>[
-                              Icon(Icons.shopping_bag_sharp, color: Colors.black,),
+                              Icon(Icons.mark_chat_read_sharp, color: Colors.black,),
                               SizedBox(width: 5,),
-                              Text("Shop", style: TextStyle(color: Colors.black),)
+                              Text("Astrologer", style: TextStyle(color: Colors.black),)
                             ],
                           ),
                         ),
                       ),
                       GestureDetector(
-                        onTap: _navigateToBuyQuestionsPage,
+                        onTap: (){
+                          Navigator.push(context, MaterialPageRoute(builder: (context)=>NeedHelp()));
+                        },
                         child: Container(
                           child: Row(
                             children: <Widget>[

@@ -367,10 +367,10 @@ class _AstrologerChatPageState extends State<AstrologerChatPage> {
       return;
     }
 
-    if (!_isPurchased && !await _checkAndHandleAvailableQuestions()) {
-      // No available questions and failed to grant a free one
-      return;
-    }
+    // if (!_isPurchased && !await _checkAndHandleAvailableQuestions()) {
+    //   // No available questions and failed to grant a free one
+    //   return;
+    // }
 
     String newMessageId = Uuid().v4();
 

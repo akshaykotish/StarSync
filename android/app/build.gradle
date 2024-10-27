@@ -3,7 +3,8 @@ plugins {
     id "kotlin-android"
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id "dev.flutter.flutter-gradle-plugin"
-    id 'com.google.gms.google-services' version '4.3.15' apply false
+    //   id 'com.google.gms.google-services' version '4.4.2' apply false
+    id 'com.google.gms.google-services'
 }
 
 
@@ -18,6 +19,7 @@ android {
     namespace = "com.akshaykotish.starsync.starsyncapp"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
+
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_1_8
@@ -54,6 +56,8 @@ android {
             // Signing with the debug keys for now, so `flutter run --release` works.
             //signingConfig = signingConfigs.debug
             signingConfig = signingConfigs.release
+            minifyEnabled true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
 }
@@ -63,8 +67,19 @@ flutter {
 }
 
 dependencies {
-    implementation platform('com.google.firebase:firebase-bom:33.3.0')
+    // Kotlin Standard Library
+    implementation "org.jetbrains.kotlin:kotlin-stdlib:1.8.22"
+
+    // Firebase BOM allows you to set the same version for all Firebase dependencies.
+    implementation platform('com.google.firebase:firebase-bom:33.5.1')
+
+    // Firebase Analytics
     implementation 'com.google.firebase:firebase-analytics'
-    implementation("com.google.firebase:firebase-appcheck-playintegrity")
+
+    // Firebase App Check with Play Integrity
+    implementation 'com.google.firebase:firebase-appcheck-playintegrity'
+
+    implementation 'com.google.android.gms:play-services-auth:20.5.0'
+    implementation 'com.guardsquare:proguard-annotations:7.2.2'
 
 }

@@ -8,7 +8,7 @@ class EarningsPage extends StatefulWidget {
   _EarningsPageState createState() => _EarningsPageState();
 }
 
-class _EarningsPageState extends State<EarningsPage> {
+class _EarningsPageState extends State<EarningsPage> with SingleTickerProviderStateMixin {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   String? astrologerId;
   int withdrawableAmount = 0;
@@ -16,14 +16,16 @@ class _EarningsPageState extends State<EarningsPage> {
   String? bankName;
   String? ifscCode;
 
+  late TabController _tabController;
+
   @override
   void initState() {
     super.initState();
     _loadAstrologerId();
     _fetchWithdrawableAmount();
+    _tabController = TabController(length: 2, vsync: this);
   }
 
-  // Load astrologer ID from SharedPreferences
   Future<void> _loadAstrologerId() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     setState(() {
@@ -31,7 +33,6 @@ class _EarningsPageState extends State<EarningsPage> {
     });
   }
 
-  // Fetch withdrawable income from Firestore
   Future<void> _fetchWithdrawableAmount() async {
     await _loadAstrologerId();
     if (astrologerId != null) {
@@ -45,18 +46,24 @@ class _EarningsPageState extends State<EarningsPage> {
     }
   }
 
-  // Request withdrawal, store bank information
   Future<void> _requestWithdrawal() async {
     if (astrologerId != null &&
         bankAccount != null &&
         bankName != null &&
         ifscCode != null) {
       try {
-        // Update astrologer document with bank information
-        await _firestore.collection('astrologers').doc(astrologerId).update({
+        // Create a new withdrawal request in Firestore
+        String withdrawalId = _firestore.collection('astrologers').doc(astrologerId)
+            .collection('withdrawals').doc().id;
+
+        await _firestore.collection('astrologers').doc(astrologerId)
+            .collection('withdrawals').doc(withdrawalId).set({
+          'amount': withdrawableAmount,
+          'status': 'pending',
           'bank_account': bankAccount,
           'bank_name': bankName,
           'ifsc_code': ifscCode,
+          'timestamp': FieldValue.serverTimestamp(),
         });
 
         ScaffoldMessenger.of(context).showSnackBar(
@@ -70,7 +77,6 @@ class _EarningsPageState extends State<EarningsPage> {
     }
   }
 
-  // Show bank information input form
   Future<void> _showBankInfoDialog() async {
     showDialog(
       context: context,
@@ -177,15 +183,26 @@ class _EarningsPageState extends State<EarningsPage> {
             child: Container(
               decoration: BoxDecoration(
                   color: Colors.white, borderRadius: BorderRadius.circular(10)),
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  children: [
-                    _buildWithdrawableCard(context), // Withdrawable amount card
-                    Text("Answered Questions"),
-                    Expanded(child: _buildSolvedChatsList()), // Solved chats
-                  ],
-                ),
+              child: Column(
+                children: [
+                  _buildWithdrawableCard(context),
+                  TabBar(
+                    controller: _tabController,
+                    tabs: [
+                      Tab(text: "Answered Questions"),
+                      Tab(text: "Withdrawal Requests"),
+                    ],
+                  ),
+                  Expanded(
+                    child: TabBarView(
+                      controller: _tabController,
+                      children: [
+                        _buildSolvedChatsList(),
+                        _buildWithdrawalsList(),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
@@ -194,7 +211,6 @@ class _EarningsPageState extends State<EarningsPage> {
     );
   }
 
-  // Card showing the astrologer's withdrawable amount with icon button
   Widget _buildWithdrawableCard(BuildContext context) {
     return Card(
       elevation: 5,
@@ -252,7 +268,6 @@ class _EarningsPageState extends State<EarningsPage> {
     );
   }
 
-  // List of solved chats as transactions
   Widget _buildSolvedChatsList() {
     return StreamBuilder<QuerySnapshot>(
       stream: _firestore
@@ -288,98 +303,64 @@ class _EarningsPageState extends State<EarningsPage> {
             String questionId = solvedChat['question_id'];
             String userId = solvedChat['user_id'];
 
-            return _buildTransactionCard(questionId, userId, date, cost, index);
+            return ListTile(
+              title: Text("Question ID: $questionId"),
+              subtitle: Text("Answered for User: $userId on ${DateFormat.yMMMd().format(date)}"),
+              trailing: Text("₹$cost"),
+            );
           },
         );
       },
     );
   }
 
-  // Card for each solved transaction with unique styles
-  Widget _buildTransactionCard(
-      String questionId, String userId, DateTime date, int cost, int index) {
-    // Define a list of colors and shapes for unique styles
-    final List<Color> colors = [
-      Colors.black!,
-      Colors.purple[400]!,
-      Colors.orange[400]!,
-      Colors.indigo[400]!,
-      Colors.green[400]!,
-    ];
+  Widget _buildWithdrawalsList() {
+    return StreamBuilder<QuerySnapshot>(
+      stream: _firestore
+          .collection('astrologers')
+          .doc(astrologerId)
+          .collection('withdrawals')
+          .orderBy('timestamp', descending: true)
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) {
+          return Center(
+            child: CircularProgressIndicator(),
+          );
+        }
 
-    final List<BoxDecoration> decorations = [
-      BoxDecoration(
-        color: colors[index % colors.length],
-        borderRadius: BorderRadius.circular(15),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.5),
-            spreadRadius: 2,
-            blurRadius: 5,
-            offset: Offset(0, 3),
-          ),
-        ],
-      ),
-      BoxDecoration(
-        gradient: LinearGradient(
-          colors: [colors[index % colors.length], Colors.white],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(15),
-      ),
-      BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(15),
-        border: Border.all(color: colors[index % colors.length], width: 2),
-      ),
-      BoxDecoration(
-        color: Colors.grey[200],
-        borderRadius: BorderRadius.circular(15),
-      ),
-      BoxDecoration(
-        color: colors[index % colors.length],
-        borderRadius: BorderRadius.circular(0),
-      ),
-    ];
+        var withdrawals = snapshot.data!.docs;
 
-    return Card(
-      elevation: 3,
-      margin: EdgeInsets.symmetric(vertical: 8),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      child: Container(
-        decoration: decorations[index % decorations.length],
-        child: ListTile(
-          contentPadding: EdgeInsets.symmetric(vertical: 15, horizontal: 20),
-          leading: Icon(
-            Icons.question_answer,
-            color: index % 2 == 0 ? Colors.white : colors[index % colors.length],
-            size: 30,
-          ),
-          title: Text(
-            "Question ID: \n$questionId",
-            style: TextStyle(
-              color: index % 2 == 0 ? Colors.white : Colors.black,
-              fontWeight: FontWeight.bold,
-              fontSize: 12
+        if (withdrawals.isEmpty) {
+          return Center(
+            child: Text(
+              "No withdrawal requests found.",
+              style: TextStyle(color: Colors.grey[600], fontSize: 16),
             ),
-          ),
-          subtitle: Text(
-            "${DateFormat('yyyy-MM-dd HH:mm').format(date)}",
-            style: TextStyle(
-              color: index % 2 == 0 ? Colors.white70 : Colors.grey[700],
-            ),
-          ),
-          trailing: Text(
-            "₹$cost",
-            style: TextStyle(
-              color: index % 2 == 0 ? Colors.white : Colors.black,
-              fontWeight: FontWeight.bold,
-              fontSize: 20,
-            ),
-          ),
-        ),
-      ),
+          );
+        }
+
+
+        return ListView.builder(
+          itemCount: withdrawals.length,
+          itemBuilder: (context, index) {
+            var withdrawal = withdrawals[index].data() as Map<String, dynamic>;
+            DateTime date = (withdrawal['timestamp'] as Timestamp).toDate();
+            String status = withdrawal['status'] ?? 'unknown';
+            int amount = withdrawal['amount'] ?? 0;
+
+            return ListTile(
+              title: Text("Requested Withdrawal: ₹$amount"),
+              subtitle: Text(
+                  "Status: $status on ${DateFormat.yMMMd().format(date)}"),
+              trailing: Icon(
+                status == 'pending' ? Icons.hourglass_empty : Icons.check_circle,
+                color: status == 'pending' ? Colors.orange : Colors.green,
+              ),
+            );
+          },
+        );
+      },
     );
   }
 }
