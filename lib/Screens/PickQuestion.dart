@@ -79,32 +79,20 @@ import 'FullScreenImagePage.dart';
         onTap: () {
           _showQuestionDetails(userId, questionId, purchaseId);
         },
-        child: Card(
-          elevation: 5,
-          margin: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
+        child: Container(
+          margin: EdgeInsets.all(8),
+          padding: EdgeInsets.all(16),
+          decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(15),
+              color: Colors.grey.shade200
           ),
-          child: Container(
-            padding: EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Colors.amber[800]!, Colors.amber[400]!],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text("Question ID: $questionId", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
-                SizedBox(height: 5),
-                Text("Status: ${questionData['status']}", style: TextStyle(color: Colors.white70)),
-                SizedBox(height: 5),
-                Text("User ID: $userId", style: TextStyle(color: Colors.white70)),
-              ],
-            ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text("Question ID: $questionId", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black)),
+              SizedBox(height: 5),
+              Text("Status: ${questionData['status']}", style: TextStyle(color: Colors.black)),
+            ],
           ),
         ),
       );

@@ -273,14 +273,14 @@ class _BuyQuestionPageState extends State<BuyQuestionPage> {
           children: [
             Center(
               child: Column(
-                mainAxisAlignment: MainAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   if (!_isPurchased)
                     Column(
+                      mainAxisAlignment: MainAxisAlignment.end,
                       children: [
-                        SizedBox(height: MediaQuery.of(context).size.height/10),
                         Text(
-                          "Get a solution to your question.",
+                          "Purchase a question!.",
                           textAlign: TextAlign.center,
                           style: TextStyle(
                               fontSize: 18,
@@ -291,20 +291,22 @@ class _BuyQuestionPageState extends State<BuyQuestionPage> {
                         ElevatedButton(
                           onPressed: openCheckout,
                           style: ElevatedButton.styleFrom(
-                            foregroundColor: Colors.white,
-                            backgroundColor: Colors.blue,
+                            foregroundColor: Colors.black,
+                            backgroundColor: Colors.greenAccent,
                             padding: EdgeInsets.symmetric(
                                 horizontal: 50, vertical: 15),
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(10),
                             ),
                           ),
                           child: Text(
-                            "Pay ₹$price",
+                            "₹4̶90̶/-̶ ₹$price/- only",
                             style: TextStyle(
-                                fontSize: 16, fontWeight: FontWeight.bold),
+                                fontSize: 26, fontWeight: FontWeight.bold),
                           ),
                         ),
+
+                        SizedBox(height: MediaQuery.of(context).size.height/10),
                       ],
                     ),
                   if (_isPurchased)

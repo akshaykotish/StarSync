@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -14,6 +16,7 @@ import 'package:starsyncapp/Screens/NeedHelp.dart';
 import 'package:starsyncapp/Screens/Profile.dart';
 import 'package:uuid/uuid.dart'; // For generating unique IDs
 import 'package:starsyncapp/Screens/BuyQuestions.dart';
+import '../CustomNotifications.dart';
 import 'Astrologerbranding.dart';
 import 'AudioPlayerWidget.dart';
 import 'AudioWaveFormWidget.dart';
@@ -21,6 +24,7 @@ import 'FullScreenImagePage.dart';
 import 'package:flutter_sound/flutter_sound.dart' as fs;
 import 'package:audioplayers/audioplayers.dart' as ap;
 
+import 'IncomingCallScreen.dart';
 import 'SineWave.dart';
 import 'VideoPlayerWidget.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
@@ -57,13 +61,22 @@ class _ChatPageState extends State<ChatPage> {
 
   List<Map<String, dynamic>> selectedMediaFiles = [];
 
+
+  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _callSubscription;
+
+
+  static bool islisteningforincomingcalls = false;
+
   @override
   void initState() {
     super.initState();
+    _initRecorder();
+    _loadUserProfile().then((e){
+      _listenForIncomingCalls();
+    });
+    startListeningCustomNotifications();
     _analytics.logScreenView(screenName: 'ChatPage');
 
-    _initRecorder();
-    _loadUserProfile();
 
 
     // Listen for when the audio player completes playing
@@ -102,6 +115,53 @@ class _ChatPageState extends State<ChatPage> {
       });
     });
   }
+
+
+  Set<String> _processedCallIds = {};
+
+  void _listenForIncomingCalls() {
+    if (islisteningforincomingcalls == true) {
+      return;
+    }
+    islisteningforincomingcalls = true;
+
+    print("USER ID ISKF");
+    print(userId);
+    _callSubscription = FirebaseFirestore.instance
+        .collection('users')
+        .doc(userId)
+        .collection('calls')
+        .snapshots()
+        .listen((QuerySnapshot<Map<String, dynamic>> snapshot) {
+      print("Call Coming");
+      for (var doc in snapshot.docs) {
+        Map<String, dynamic>? data = doc.data();
+        if (data != null && data['status'] == 'calling') {
+          String callId = data['callId'];
+          if (!_processedCallIds.contains(callId)) {
+            _processedCallIds.add(callId);
+
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => IncomingCallScreen(
+                  callId: callId,
+                  userId: userId!,
+                  astrologerId: data['astrologerId'],
+                ),
+              ),
+            ).then((_) {
+              // Optionally, remove the callId from the set when the screen is popped
+              _processedCallIds.remove(callId);
+            });
+            return; // Exit the loop after handling one call
+          }
+        }
+      }
+    });
+  }
+
+
 
   Future<void> _initRecorder() async {
     await _recorder.openRecorder();
@@ -246,6 +306,23 @@ class _ChatPageState extends State<ChatPage> {
   }
 
 
+  Future<void> addNotification(String userId, Map<String, dynamic> notificationData) async {
+    try {
+      // Reference to the 'notifications' subcollection for a specific user
+      CollectionReference notifications = FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .collection('notifications');
+
+      // Add the notification document to Firestore
+      await notifications.add(notificationData);
+
+      print('Notification added successfully!');
+    } catch (e) {
+      print('Error adding notification: $e');
+    }
+  }
+
 
   Future<void> _sendQuestion(String messageText) async {
     if ((messageText.trim().isNotEmpty || selectedMediaFiles.isNotEmpty) && availableQuestions > 0) {
@@ -340,6 +417,8 @@ class _ChatPageState extends State<ChatPage> {
         _audioFilePath = null;
         _audioDownloadUrl = null;
       });
+
+
     }
     else {
       print("No available questions or invalid input.");
@@ -667,7 +746,7 @@ class _ChatPageState extends State<ChatPage> {
                           Image.asset('assets/logo.png', height: 45, width: 45),
                           SizedBox(width: 10),
                           Text(
-                            "StarSync",
+                            "StarSyync",
                             style: TextStyle(
                               color: Colors.black,
                               fontSize: 18,
@@ -1016,6 +1095,7 @@ class _ChatPageState extends State<ChatPage> {
 
   @override
   void dispose() {
+    _callSubscription?.cancel();
     _recorder.closeRecorder();
     _audioPlayer.dispose(); // Dispose the audio player
     super.dispose();

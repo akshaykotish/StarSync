@@ -7,10 +7,15 @@ import 'package:firebase_analytics/observer.dart'; // Import FirebaseAnalyticsOb
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:starsyncapp/PushNotificationService.dart';
+import 'package:workmanager/workmanager.dart';
 import 'Screens/ChatPage.dart';
 import 'Screens/Profile.dart';
 import 'Screens/AstrologersHome.dart'; // Import AstrologersHome screen
+import 'WorkBench.dart';
 import 'firebase_options.dart';
+import 'package:firebase_in_app_messaging/firebase_in_app_messaging.dart';
+
 
 void main() async {
   await WidgetsFlutterBinding.ensureInitialized(); // Ensure widgets are initialized
@@ -18,11 +23,28 @@ void main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   ); // Initialize Firebase
 
+  await NotificationService.instance.initialize();
+
+
   await FirebaseAppCheck.instance.activate(
     //androidProvider: AndroidProvider.playIntegrity,
     // For iOS, you might use AppleProvider.appAttest or AppleProvider.deviceCheck
     androidProvider: AndroidProvider.debug,
     appleProvider: AppleProvider.debug,
+  );
+
+  FirebaseInAppMessaging fiam = FirebaseInAppMessaging.instance;
+
+  Workmanager().initialize(
+    callbackDispatcher, // The top level function
+    isInDebugMode: false, // Set to true for debugging
+  );
+
+  // Register the background task
+  Workmanager().registerPeriodicTask(
+    "starsyync",
+    "checkForUpdatesTask",
+    frequency: Duration(minutes: 15), // Adjust the frequency as needed
   );
 
   runApp(const MyApp());
@@ -42,10 +64,12 @@ class _MyAppState extends State<MyApp> {
   // Declare FirebaseAnalytics and FirebaseAnalyticsObserver
   late FirebaseAnalytics analytics;
   late FirebaseAnalyticsObserver observer;
+  // Instantiate the PushNotificationService
 
   @override
   void initState() {
     super.initState();
+
     FirebaseAnalytics.instance.logEvent(name: 'view_${this.runtimeType}');
 
     signInAnonymously();

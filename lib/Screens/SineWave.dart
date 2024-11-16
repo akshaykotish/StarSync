@@ -38,7 +38,7 @@ class _SineWaveWidgetState extends State<SineWaveWidget> with SingleTickerProvid
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 160,
+      width: MediaQuery.of(context).size.width/4,
       height: 40,
       child: AnimatedBuilder(
         animation: _animation,

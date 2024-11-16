@@ -8,6 +8,7 @@ import 'package:uuid/uuid.dart'; // For generating unique IDs
 import 'dart:async';
 import 'dart:io';
 
+import 'Connect.dart';
 import 'FullScreenImagePage.dart'; // For displaying images in full screen
 import 'AudioPlayerWidget.dart'; // Custom widget for audio playback
 import 'SineWave.dart';
@@ -273,9 +274,9 @@ class _AstrologerChatPageState extends State<AstrologerChatPage> {
           DocumentSnapshot purchaseDoc =
           await _firestore.collection('purchase').doc(purchaseId).get();
           if (purchaseDoc.exists && purchaseDoc.data() != null) {
+
             // Extract the cost value from the purchase document
-            int cost = (purchaseDoc.data() as Map<String, dynamic>)['cost'] ??
-                100; // Default to 100 if not found
+            int cost = (purchaseDoc.data() as Map<String, dynamic>)['cost']?.toInt() ?? 100;
 
             // Remove the question from astrologer's answers
             await _firestore
@@ -421,6 +422,31 @@ class _AstrologerChatPageState extends State<AstrologerChatPage> {
       _audioFilePath = null;
       _audioDownloadUrl = null;
     });
+
+    addNotification(widget.userId!, {
+      "Title": "StarSync sent you a message",
+      "Description": "${ replyMessage.length > 20 ? replyMessage.substring(0, 20) : replyMessage}..."
+    });
+  }
+
+
+  Future<void> addNotification(String userId, Map<String, dynamic> notificationData) async {
+    try {
+      print("adding notification...");
+
+      // Reference to the 'notifications' subcollection for a specific user
+      CollectionReference notifications = FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .collection('notifications');
+
+      // Add the notification document to Firestore
+      await notifications.add(notificationData);
+
+      print('Notification added successfully!');
+    } catch (e) {
+      print('Error adding notification: $e');
+    }
   }
 
   // Check if user has available questions or grant a free one
@@ -863,6 +889,28 @@ class _AstrologerChatPageState extends State<AstrologerChatPage> {
     // This is already handled in _giveFreeQuestion()
   }
 
+  // Helper widget to display profile information row
+  Widget _buildProfileInfoRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          Text(
+            label,
+            style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black87),
+          ),
+          SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              value,
+              style: TextStyle(color: Colors.black54),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -902,6 +950,32 @@ class _AstrologerChatPageState extends State<AstrologerChatPage> {
                   // Action Buttons: Gift and Exit
                   Row(
                     children: [
+                      Connect(astrologerId: astrologerId!, userId: widget.userId,),
+                      IconButton(onPressed: () async {
+                        DocumentSnapshot userDoc = await _firestore.collection('users').doc(userContact).get();
+                        var userData = userDoc.data() as Map<String, dynamic>;
+
+                        showDialog(context: context, builder: (BuildContext context){
+                          return AlertDialog(
+                            title: Text("User's Kundali"),
+                            content: SingleChildScrollView(
+                              child: Padding(
+                                padding: const EdgeInsets.all(7.0),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    _buildProfileInfoRow("Name:", userData['name']),
+                                    _buildProfileInfoRow("DOB:", userData['dob'].toString().substring(0, 10)),
+                                    _buildProfileInfoRow("Time of Birth:", userData['time_of_birth']),
+                                    _buildProfileInfoRow("Location:", userData['location']),
+                                    _buildProfileInfoRow("Gender:", userData['gender']),
+                                  ],
+                                ),
+                              )
+                            ),
+                          );
+                        });
+                      }, icon: Icon(Icons.account_circle, color: Colors.black,)),
                       IconButton(
                         icon: Icon(Icons.card_giftcard, color: Colors.black),
                         onPressed: _giveFreeQuestion,

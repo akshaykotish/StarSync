@@ -148,7 +148,7 @@ class _AstrologerProfileState extends State<AstrologerProfile> {
         ),
         SizedBox(height: 15),
         Text(
-          "StarSync", // Replace with actual name if available
+          "StarSyync", // Replace with actual name if available
           style: TextStyle(
             fontSize: 24,
             fontWeight: FontWeight.bold,

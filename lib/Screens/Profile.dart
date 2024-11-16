@@ -8,6 +8,7 @@ import 'package:starsyncapp/Screens/AstrologerLogin.dart';
 import 'package:pinput/pinput.dart';
 import 'package:smart_auth/smart_auth.dart';
 import 'package:starsyncapp/Screens/SmsRetrieverImpl.dart';
+import 'package:uuid/uuid.dart';
 
 import 'ChatPage.dart';
 
@@ -364,6 +365,88 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
     });
   }
 
+
+  Future<void> GiveFreeQuestion() async {
+    String userContact = _contactController.text;
+    // Give free question by recording a zero-cost purchase
+    String purchaseId = Uuid().v4(); // Generate unique purchase ID
+
+    await FirebaseFirestore.instance.collection('purchase')
+        .doc(purchaseId)
+        .set({
+      'purchase_id': purchaseId,
+      'user_id': userContact,
+      'cost': 0, // Free question, cost is 0
+      'margin': 0,
+      'tax': 0,
+      'price': 0,
+      'timestamp': Timestamp.now(),
+    });
+
+    // Link purchase to user's purchase history
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(userContact)
+        .collection('purchases')
+        .doc(purchaseId)
+        .set({
+      'purchase_id': purchaseId,
+      'timestamp': Timestamp.now(),
+    });
+
+    // Show confirmation of success
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text("Free question granted to the user.")),
+    );
+  }
+
+  Future<void> ValidateGiveFreeQuestion() async {
+    String userContact = _contactController.text;
+
+    try {
+
+      // Reference to the purchases collection
+      final purchasesCollection = FirebaseFirestore.instance
+          .collection('users')
+          .doc(userContact)
+          .collection('purchases');
+
+      // Fetch all documents in the purchases collection, ordered by timestamp descending
+      final querySnapshot = await purchasesCollection
+          .orderBy('timestamp', descending: true)
+          .get();
+
+      // Check if there are no purchases
+      if (querySnapshot.docs.isEmpty) {
+          GiveFreeQuestion();
+      }
+      else{
+        // Get the latest purchase timestamp
+        final latestPurchase = querySnapshot.docs.first;
+        final Timestamp timestamp = latestPurchase['timestamp'];
+        final DateTime lastPurchaseDate = timestamp.toDate();
+
+        // Calculate the difference in days from the current date
+        final DateTime now = DateTime.now();
+        final differenceInDays = now.difference(lastPurchaseDate).inDays;
+
+        if(differenceInDays > 7)
+          {
+            GiveFreeQuestion();
+          }
+      }
+
+    } catch (e) {
+      print('Error saving profile or granting free question: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error saving profile or granting free question.")),
+      );
+    } finally {
+      _isLoading = false;
+      setState(() {});
+    }
+  }
+
   Future<void> saveProfile() async {
     _isLoading = true;
     setState(() {
@@ -380,6 +463,8 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
 
     // Save profile to SharedPreferences
     _saveToSharedPreferences();
+
+    ValidateGiveFreeQuestion();
   }
 
   @override
@@ -428,6 +513,11 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
                             fontWeight: FontWeight.bold,
                             fontSize: 18,
                           ),
+                        ),
+                        SizedBox(height: 10),
+                        Container(
+                          width: MediaQuery.of(context).size.width,
+                          child: Image.asset("assets/diwali.png", fit: BoxFit.contain,),
                         ),
                         SizedBox(height: 10),
                         Text(

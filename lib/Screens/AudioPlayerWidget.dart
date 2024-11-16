@@ -22,21 +22,27 @@ class _AudioPlayerWidgetState extends State<AudioPlayerWidget> {
     _audioPlayer = AudioPlayer();
 
     _audioPlayer.onDurationChanged.listen((duration) {
-      setState(() {
-        _duration = duration;
-      });
+      if (mounted) {
+        setState(() {
+          _duration = duration;
+        });
+      }
     });
 
     _audioPlayer.onPositionChanged.listen((position) {
-      setState(() {
-        _position = position;
-      });
+      if (mounted) {
+        setState(() {
+          _position = position;
+        });
+      }
     });
 
     _audioPlayer.onPlayerStateChanged.listen((state) {
-      setState(() {
-        isPlaying = state == PlayerState.playing;
-      });
+      if (mounted) {
+        setState(() {
+          isPlaying = state == PlayerState.playing;
+        });
+      }
     });
   }
 
@@ -80,7 +86,7 @@ class _AudioPlayerWidgetState extends State<AudioPlayerWidget> {
             ),
             Text(
               "${_position.inMinutes}:${(_position.inSeconds % 60).toString().padLeft(2, '0')} / ${_duration.inMinutes}:${(_duration.inSeconds % 60).toString().padLeft(2, '0')}",
-            style: TextStyle(fontSize: 12),
+              style: TextStyle(fontSize: 12),
             ),
           ],
         ),

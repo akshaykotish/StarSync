@@ -39,8 +39,8 @@ class _EarningsPageState extends State<EarningsPage> with SingleTickerProviderSt
       DocumentSnapshot astrologerDoc =
       await _firestore.collection('astrologers').doc(astrologerId).get();
       setState(() {
-        withdrawableAmount = astrologerDoc.exists
-            ? astrologerDoc['withdrawable_amount'] ?? 0
+         withdrawableAmount = astrologerDoc.exists
+            ? (astrologerDoc['withdrawable_amount'] as num?)?.toInt() ?? 0
             : 0;
       });
     }
@@ -299,13 +299,13 @@ class _EarningsPageState extends State<EarningsPage> with SingleTickerProviderSt
           itemBuilder: (context, index) {
             var solvedChat = solvedChats[index].data() as Map<String, dynamic>;
             DateTime date = (solvedChat['timestamp'] as Timestamp).toDate();
-            int cost = solvedChat['cost'] ?? 0;
+            int cost = (solvedChat['cost'] as num?)?.toInt() ?? 0;
             String questionId = solvedChat['question_id'];
             String userId = solvedChat['user_id'];
 
             return ListTile(
               title: Text("Question ID: $questionId"),
-              subtitle: Text("Answered for User: $userId on ${DateFormat.yMMMd().format(date)}"),
+              subtitle: Text("Answered on ${DateFormat.yMMMd().format(date)}"),
               trailing: Text("₹$cost"),
             );
           },

@@ -87,35 +87,27 @@ class _AnswerQuestionsPageState extends State<AnswerQuestionsPage> {
           onTap: () {
             _navigateToChatPage(userId, questionId);
           },
-          child: Card(
-            elevation: 5,
-            margin: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
+          child: Container(
+            margin: EdgeInsets.all(8),
+            padding: EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(15),
+              color: Colors.grey.shade200
             ),
-            child: Container(
-              padding: EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Colors.amber[800]!, Colors.amber[400]!],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    "Question: $questionText", // Show question text
-                    style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(Icons.account_circle, color: Colors.black,),
+                SizedBox(width: 5,),
+                Container(
+                  width: MediaQuery.sizeOf(context).width/1.5,
+                  child: Text(
+                    questionText,
+                    // "${questionText.length > 35 ? questionText.substring(0, 35) + "..." : questionText}", // Show question text
+                    style: TextStyle(fontWeight: FontWeight.w700, color: Colors.black),
                   ),
-                  SizedBox(height: 5),
-                  Text("Status: ${questionData['status']}", style: TextStyle(color: Colors.white70)),
-                  SizedBox(height: 5),
-                  Text("User ID: $userId", style: TextStyle(color: Colors.white70)),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         );
