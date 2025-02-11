@@ -77,10 +77,10 @@ class _BuyQuestionPageState extends State<BuyQuestionPage> {
         });
       } else {
         // Create the document with default values
-        int defaultCost = 25;
-        int defaultMargin = 25;
-        int defaultTax = 9;
-        int defaultPlatformFees = 0;
+        int defaultCost = 350;
+        int defaultMargin = 350;
+        int defaultTax = 180;
+        int defaultPlatformFees = 100;
         int defaultPrice =
             defaultCost + defaultMargin + defaultTax + defaultPlatformFees;
 
@@ -300,7 +300,7 @@ class _BuyQuestionPageState extends State<BuyQuestionPage> {
                             ),
                           ),
                           child: Text(
-                            "₹4̶90̶/-̶ ₹$price/- only",
+                            "₹14̶90̶/-̶ ₹$price/- only",
                             style: TextStyle(
                                 fontSize: 26, fontWeight: FontWeight.bold),
                           ),

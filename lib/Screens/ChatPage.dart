@@ -1,36 +1,30 @@
 import 'dart:async';
-
+import 'dart:io';
+import 'package:audioplayers/audioplayers.dart' as ap;
 import 'package:audioplayers/audioplayers.dart';
-import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:firebase_analytics/firebase_analytics.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_sound/public/flutter_sound_recorder.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:intl/intl.dart'; // For date and time formatting
-import 'package:image_picker/image_picker.dart';
-import 'package:firebase_storage/firebase_storage.dart';
-import 'dart:io';
-import 'package:file_picker/file_picker.dart'; // For audio file picking
-import 'package:starsyncapp/Screens/NeedHelp.dart';
-import 'package:starsyncapp/Screens/Profile.dart';
-import 'package:uuid/uuid.dart'; // For generating unique IDs
-import 'package:starsyncapp/Screens/BuyQuestions.dart';
-import '../CustomNotifications.dart';
+import 'package:uuid/uuid.dart';
+import 'package:flutter_sound/flutter_sound.dart';
 import 'Astrologerbranding.dart';
 import 'AudioPlayerWidget.dart';
 import 'AudioWaveFormWidget.dart';
+import 'BuyQuestions.dart';
 import 'FullScreenImagePage.dart';
-import 'package:flutter_sound/flutter_sound.dart' as fs;
-import 'package:audioplayers/audioplayers.dart' as ap;
-
 import 'IncomingCallScreen.dart';
+import 'NeedHelp.dart';
+import 'Profile.dart';
 import 'SineWave.dart';
 import 'VideoPlayerWidget.dart';
-import 'package:firebase_analytics/firebase_analytics.dart';
-import 'package:firebase_analytics/observer.dart';
-
-
 
 class ChatPage extends StatefulWidget {
   @override
@@ -39,52 +33,36 @@ class ChatPage extends StatefulWidget {
 
 class _ChatPageState extends State<ChatPage> {
   final FirebaseAnalytics _analytics = FirebaseAnalytics.instance;
-
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseStorage _storage = FirebaseStorage.instance;
   final TextEditingController _messageController = TextEditingController();
   String? userId, name, gender, contactNumber;
   int availableQuestions = 0;
   final ImagePicker _picker = ImagePicker();
-
   final FlutterSoundRecorder _recorder = FlutterSoundRecorder();
   bool _isRecording = false;
   String? _audioFilePath;
   String? _audioDownloadUrl;
-
   bool _isAudioRecorded = false;
   bool _isPlayingAudio = false;
   final ap.AudioPlayer _audioPlayer = ap.AudioPlayer();
-
   Duration _currentPosition = Duration.zero;
   Duration _totalDuration = Duration.zero;
-
   List<Map<String, dynamic>> selectedMediaFiles = [];
-
-
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _callSubscription;
-
-
   static bool islisteningforincomingcalls = false;
 
   @override
   void initState() {
     super.initState();
     _initRecorder();
-    _loadUserProfile().then((e){
+    _loadUserProfile().then((e) {
       _listenForIncomingCalls();
     });
-    startListeningCustomNotifications();
     _analytics.logScreenView(screenName: 'ChatPage');
-
-
-
-    // Listen for when the audio player completes playing
     _audioPlayer.onPlayerComplete.listen((event) {
       _resetAudioAndWaveform();
     });
-
-    // Listen for player state changes
     _audioPlayer.onPlayerStateChanged.listen((ap.PlayerState state) {
       if (state == ap.PlayerState.paused || state == ap.PlayerState.stopped) {
         setState(() {
@@ -92,83 +70,80 @@ class _ChatPageState extends State<ChatPage> {
         });
       }
     });
-
-    // Listen for audio position changes
     _audioPlayer.onPositionChanged.listen((Duration position) {
       setState(() {
         _currentPosition = position;
       });
     });
-
-    // Listen for audio duration changes
     _audioPlayer.onDurationChanged.listen((Duration duration) {
       setState(() {
         _totalDuration = duration;
       });
     });
-
-    // Listen for when the audio player completes playing
-    _audioPlayer.onPlayerComplete.listen((event) {
-      setState(() {
-        _isPlayingAudio = false;
-        _currentPosition = Duration.zero;
-      });
-    });
   }
-
 
   Set<String> _processedCallIds = {};
 
   void _listenForIncomingCalls() {
-    if (islisteningforincomingcalls == true) {
+    if (islisteningforincomingcalls) {
+      print("Already listening for incoming calls.");
       return;
     }
     islisteningforincomingcalls = true;
 
-    print("USER ID ISKF");
-    print(userId);
+    print("Listening for incoming calls...");
+
+    if (userId == null) {
+      print("User ID is null. Cannot listen for calls.");
+      return;
+    }
+
     _callSubscription = FirebaseFirestore.instance
         .collection('users')
         .doc(userId)
         .collection('calls')
         .snapshots()
         .listen((QuerySnapshot<Map<String, dynamic>> snapshot) {
-      print("Call Coming");
+
       for (var doc in snapshot.docs) {
         Map<String, dynamic>? data = doc.data();
+        // Check if call is in "calling" state
         if (data != null && data['status'] == 'calling') {
           String callId = data['callId'];
-          if (!_processedCallIds.contains(callId)) {
+          // Make sure we haven't processed this callId before
+          if (!_processedCallIds.contains(callId) && data['astrologerId'] != null) {
             _processedCallIds.add(callId);
 
+            // Navigate to IncomingCallScreen
             Navigator.push(
               context,
               MaterialPageRoute(
                 builder: (context) => IncomingCallScreen(
                   callId: callId,
-                  userId: userId!,
-                  astrologerId: data['astrologerId'],
+                  callerId: data['astrologerId'].toString(), // or callerId
+                  receiverId: userId!,                       // "this" user
+                  callerName: data['callerName'] ?? "Astrologer",
                 ),
               ),
             ).then((_) {
-              // Optionally, remove the callId from the set when the screen is popped
+              // Once the call screen is popped, remove from set
               _processedCallIds.remove(callId);
             });
-            return; // Exit the loop after handling one call
+
+            return; // We only want to handle one new "calling" doc at a time
           }
         }
       }
+    }, onError: (error) {
+      print("Error listening for incoming calls: $error");
     });
+
   }
-
-
 
   Future<void> _initRecorder() async {
     await _recorder.openRecorder();
     await _recorder.setSubscriptionDuration(const Duration(milliseconds: 500));
   }
-
-
 
   Future<void> _loadUserProfile() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -182,10 +157,8 @@ class _ChatPageState extends State<ChatPage> {
       DocumentSnapshot userDoc = await _firestore.collection('users').doc(userId).get();
       setState(() {
         contactNumber = userDoc.id;
-        // We'll calculate availableQuestions below
       });
 
-      // Fetch all documents in 'users/{userId}/purchases/'
       QuerySnapshot purchasesSnapshot = await _firestore
           .collection('users')
           .doc(userId)
@@ -193,8 +166,6 @@ class _ChatPageState extends State<ChatPage> {
           .get();
 
       int count = 0;
-
-      // Count documents where 'status' != 'used' or 'status' doesn't exist
       for (var doc in purchasesSnapshot.docs) {
         var data = doc.data() as Map<String, dynamic>;
         if (!data.containsKey('status') || data['status'] != 'used') {
@@ -202,17 +173,14 @@ class _ChatPageState extends State<ChatPage> {
         }
       }
 
-      // Update 'available_questions' in state
       setState(() {
         availableQuestions = count;
       });
 
-      // Update 'available_questions' in Firestore at 'users/{userId}/'
       await _firestore.collection('users').doc(userId).update({
         'available_questions': count,
       });
 
-      // Redirect to BuyQuestionPage if availableQuestions is zero
       if (availableQuestions == 0) {
         _navigateToBuyQuestionsPage();
       }
@@ -228,19 +196,16 @@ class _ChatPageState extends State<ChatPage> {
       return;
     }
 
-    // Get the absolute file path to store the audio
     String audioFilePath = await getFilePath('audio.aac');
     _audioFilePath = audioFilePath;
-
 
     setState(() {
       _isRecording = true;
     });
 
-    // Start recording and specify the absolute path for the output file
     await _recorder.startRecorder(
-      toFile: audioFilePath,  // Save the audio in the app's documents directory
-      codec: fs.Codec.aacADTS,       // Set the codec to mp3
+      toFile: audioFilePath,
+      codec: Codec.aacADTS, // Use Codec.aacADTS instead of fs.Codec.aacADTS
     );
     print("Recording started, saving at: $audioFilePath");
 
@@ -255,7 +220,6 @@ class _ChatPageState extends State<ChatPage> {
       _isRecording = false;
     });
 
-    // Get the absolute file path of the recorded audio
     String audioFilePath = await getFilePath('audio.aac');
     File recordedFile = File(audioFilePath);
     print("Recording stopped and saved at: $audioFilePath");
@@ -269,14 +233,11 @@ class _ChatPageState extends State<ChatPage> {
     _uploadAudio(recordedFile);
   }
 
-  // Get the file path where the audio will be stored
   Future<String> getFilePath(String filename) async {
     final directory = await getApplicationDocumentsDirectory();
     return '${directory.path}/$filename';
   }
 
-
-// Upload the audio file to Firebase Storage
   Future<void> _uploadAudio(File audioFile) async {
     String absolutePath = audioFile.path;
 
@@ -297,43 +258,19 @@ class _ChatPageState extends State<ChatPage> {
       setState(() {
         _audioDownloadUrl = downloadUrl;
       });
-
-
-      //_sendQuestion("I recorded my question");  // Trigger sending the message
     } catch (e) {
       print("Error uploading audio: $e");
     }
   }
 
-
-  Future<void> addNotification(String userId, Map<String, dynamic> notificationData) async {
-    try {
-      // Reference to the 'notifications' subcollection for a specific user
-      CollectionReference notifications = FirebaseFirestore.instance
-          .collection('users')
-          .doc(userId)
-          .collection('notifications');
-
-      // Add the notification document to Firestore
-      await notifications.add(notificationData);
-
-      print('Notification added successfully!');
-    } catch (e) {
-      print('Error adding notification: $e');
-    }
-  }
-
-
   Future<void> _sendQuestion(String messageText) async {
     if ((messageText.trim().isNotEmpty || selectedMediaFiles.isNotEmpty) && availableQuestions > 0) {
-      String questionId = Uuid().v4(); // Generate unique ID for the message
+      String questionId = Uuid().v4();
 
-      // Fetch the first unused purchase
       QuerySnapshot purchaseDocs = await _firestore.collection('users').doc(userId).collection('purchases').get();
       String? purchaseId;
       for (var doc in purchaseDocs.docs) {
         var data = doc.data() as Map<String, dynamic>;
-        print(data['status']);
         if (data['status'] == null || data['status'] == 'unused' || data['free_question'] == true) {
           purchaseId = doc.id;
           break;
@@ -354,40 +291,32 @@ class _ChatPageState extends State<ChatPage> {
         });
       }
 
-
-      // Upload each selected file
       for (var fileData in selectedMediaFiles) {
         String? mediaUrl = await _uploadMedia(fileData['file'], fileData['mediaType']);
         if (mediaUrl != null) {
           uploadedFiles.add({'media_url': mediaUrl, 'media_type': fileData['mediaType']});
-          print(uploadedFiles.length);
         }
       }
 
-
-
-      // **Include purchaseId when saving the message document**
       await _firestore.collection('users').doc(userId).collection('message').doc(questionId).set({
         'question_id': questionId,
         'message_text': messageText.isNotEmpty ? messageText : null,
-        'media_files': uploadedFiles.isNotEmpty ? uploadedFiles : null, // Store all media files
+        'media_files': uploadedFiles.isNotEmpty ? uploadedFiles : null,
         'from': userId,
         'timestamp': Timestamp.now(),
         'status': 'pending',
         'assigned_to_astrologer': false,
-        'purchase_id': purchaseId, // **Add this line**
+        'purchase_id': purchaseId,
       });
 
-      // **Include purchaseId when saving the unassign document**
       await _firestore.collection('unassign').doc(questionId).set({
-        'user_id': userId,              // Store user's ID
-        'question_id': questionId,      // Store the message/question ID
-        'status': 'unassigned',         // Set status to unassigned
-        'timestamp': Timestamp.now(),   // Add current timestamp
-        'purchase_id': purchaseId,      // **Add this line**
+        'user_id': userId,
+        'question_id': questionId,
+        'status': 'unassigned',
+        'timestamp': Timestamp.now(),
+        'purchase_id': purchaseId,
       });
 
-      // Update the purchase status to "used"
       await _firestore.collection('users').doc(userId).collection('purchases').doc(purchaseId).update({
         'status': 'used',
       });
@@ -398,18 +327,14 @@ class _ChatPageState extends State<ChatPage> {
         'media_files_count': uploadedFiles.length,
       });
 
-
-      // Update the available questions count
       setState(() {
         availableQuestions--;
       });
 
-      // Update the available questions in the user's document
       await _firestore.collection('users').doc(userId).update({
         'available_questions': availableQuestions,
       });
 
-      // Clear the input field and selected media files
       _messageController.clear();
       selectedMediaFiles.clear();
       setState(() {
@@ -417,15 +342,11 @@ class _ChatPageState extends State<ChatPage> {
         _audioFilePath = null;
         _audioDownloadUrl = null;
       });
-
-
-    }
-    else {
+    } else {
       print("No available questions or invalid input.");
       _navigateToBuyQuestionsPage();
     }
   }
-
 
   Future<void> _navigateToBuyQuestionsPage() async {
     final result = await Navigator.push(
@@ -435,10 +356,9 @@ class _ChatPageState extends State<ChatPage> {
 
     _analytics.logEvent(name: 'navigated_to_buy_questions');
 
-
     if (result != null && result is bool && result == true) {
-      await _loadUserProfile(); // Re-fetch user profile to update availableQuestions
-      setState(() {}); // Call setState to reflect the updated questions count
+      await _loadUserProfile();
+      setState(() {});
     }
   }
 
@@ -447,7 +367,6 @@ class _ChatPageState extends State<ChatPage> {
       String fileId = Uuid().v4();
       Reference storageRef = _storage.ref().child('chat_media/$userId/$mediaType/$fileId');
 
-      // Upload file
       TaskSnapshot uploadTask = await storageRef.putFile(file);
       return await uploadTask.ref.getDownloadURL();
     } catch (e) {
@@ -463,7 +382,6 @@ class _ChatPageState extends State<ChatPage> {
     } else if (mediaType == 'video') {
       media = await _picker.pickVideo(source: ImageSource.gallery);
     } else {
-      // Use file picker for audio
       FilePickerResult? result = await FilePicker.platform.pickFiles(type: FileType.audio);
       if (result != null && result.files.single.path != null) {
         File file = File(result.files.single.path!);
@@ -568,7 +486,7 @@ class _ChatPageState extends State<ChatPage> {
     );
   }
 
-  Widget _sendTextMessageUI(){
+  Widget _sendTextMessageUI() {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -583,10 +501,10 @@ class _ChatPageState extends State<ChatPage> {
             icon: Icon(Icons.add, color: Colors.amber[800], size: 28),
             onPressed: _showMediaOptions,
           ),
-          _buildRecordingButton(), // Audio recording button
-          if(_isRecording)
-            Expanded(child: SineWaveWidget(isPlaying: true,)),
-          if(!_isRecording)
+          _buildRecordingButton(),
+          if (_isRecording)
+            Expanded(child: SineWaveWidget(isPlaying: true)),
+          if (!_isRecording)
             Expanded(
               child: ConstrainedBox(
                 constraints: BoxConstraints(maxHeight: 120),
@@ -616,7 +534,6 @@ class _ChatPageState extends State<ChatPage> {
       ),
     );
   }
-
 
   Future<void> _playPauseAudioAndWaveform() async {
     if (_audioFilePath == null) {
@@ -686,12 +603,8 @@ class _ChatPageState extends State<ChatPage> {
             onPressed: _playPauseAudio,
           ),
           Container(
-            child: _isPlayingAudio ? SineWaveWidget(isPlaying: true) : Container(child: SineWaveWidget(isPlaying: false),),
+            child: _isPlayingAudio ? SineWaveWidget(isPlaying: true) : Container(child: SineWaveWidget(isPlaying: false)),
           ),
-
-          // Container(
-            //   child: AudioWaveformWidget(audioFilePath: _audioFilePath!, controller: _playerController,),
-            // ),
           _buildRecordingButton(),
           IconButton(
             icon: Icon(Icons.delete),
@@ -709,7 +622,6 @@ class _ChatPageState extends State<ChatPage> {
       ),
     );
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -910,7 +822,7 @@ class _ChatPageState extends State<ChatPage> {
                               ? messages[messages.length - index - 2].data() as Map<String, dynamic>
                               : null;
 
-                          currentTimestamp = currentMessage['timestamp'];
+                          currentTimestamp = currentMessage['timestamp'] == null ? DateTime.now() : currentMessage['timestamp'];
                           bool isUser = currentMessage['usertype'] == null ? true : currentMessage['usertype'] == 'user'; // Determine if the message is from the user
                           String sender = isUser ? 'User' : 'Astrologer';
                           String displayTime = DateFormat('h:mm a').format(currentTimestamp!.toDate());
@@ -970,7 +882,7 @@ class _ChatPageState extends State<ChatPage> {
                                                     color: isUser ? Colors.white : Colors.amber,
                                                     borderRadius: BorderRadius.only(
                                                       bottomLeft: Radius.circular(0),
-                                                        topLeft: isUser ? Radius.circular(15) : Radius.circular(0),
+                                                      topLeft: isUser ? Radius.circular(15) : Radius.circular(0),
                                                       bottomRight: Radius.circular(0),
                                                       topRight: isUser ? Radius.circular(5) : Radius.circular(15),
                                                     ),
@@ -1183,4 +1095,3 @@ class _ChatPageState extends State<ChatPage> {
     _sendQuestion("I recorded my message in audio");
   }
 }
-

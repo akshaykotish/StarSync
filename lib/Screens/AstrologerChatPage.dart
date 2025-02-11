@@ -38,7 +38,7 @@ class _AstrologerChatPageState extends State<AstrologerChatPage> {
 
   // Controllers and variables for messaging
   final TextEditingController _messageController = TextEditingController();
-  String? astrologerId;
+  String? astrologerId = "";
   String? userName;
   String? gender;
   String? userContact;
@@ -63,13 +63,19 @@ class _AstrologerChatPageState extends State<AstrologerChatPage> {
 
   @override
   void initState() {
+    initialize();
     super.initState();
-    _loadAstrologerContact();
-    _fetchUserName();
-    _initRecorder();
-    _initializeAudioPlayerListeners();
-    _checkInitialPurchaseStatus();
   }
+
+  initialize()
+  async {
+    await _loadAstrologerContact();
+    await _fetchUserName();
+    await _initRecorder();
+    await _checkInitialPurchaseStatus();
+    _initializeAudioPlayerListeners();
+  }
+
 
   @override
   void dispose() {
@@ -121,6 +127,7 @@ class _AstrologerChatPageState extends State<AstrologerChatPage> {
     setState(() {
       astrologerId = prefs.getString('astrologer_phone');
     });
+    print("ASTROLOGER ID: ${astrologerId}");
   }
 
   // Fetch user's name, gender, and contact from Firestore
@@ -950,7 +957,8 @@ class _AstrologerChatPageState extends State<AstrologerChatPage> {
                   // Action Buttons: Gift and Exit
                   Row(
                     children: [
-                      Connect(astrologerId: astrologerId!, userId: widget.userId,),
+                      if (astrologerId != null) // Only render Connect if astrologerId is not null
+                        Connect(astrologerId: astrologerId!, userId: widget.userId),
                       IconButton(onPressed: () async {
                         DocumentSnapshot userDoc = await _firestore.collection('users').doc(userContact).get();
                         var userData = userDoc.data() as Map<String, dynamic>;
